@@ -17,11 +17,26 @@ knitr::opts_chunk$set(warning = FALSE)
 knitr::opts_knit$set(root.dir = normalizePath(".."))
 ```
 
+```{r include=FALSE}
+get_cluster_polys <- function(df, x, y, cluster){
+  # function returns polygons to draw around plot
+  # usage: ggplot() + geom_polygon(data = hulls) +
+  # cluster must be a string
+  
+  find_hull <- function(df) df[chull(df$PC1, df$PC2), ]
+  hulls <- plyr::ddply(df, cluster, find_hull)
+  
+  return(hulls)
+}
+```
+
+
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(pander)
 library(mclust)
 library(NbClust)
+options(mc.cores = parallel::detectCores())
 set.seed(44)
 theme_set(theme_minimal())
 
@@ -62,6 +77,17 @@ demographics %>%
   labs(title = 'Demographics', 
        x = NULL,
        y = NULL)
+```
+
+```{r}
+# distance between categories
+atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(-ID) %>% 
+  as.matrix() %>% 
+  t() %>% 
+  dist() %>% 
+  factoextra::fviz_dist(gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
 ```
 
 
@@ -139,6 +165,12 @@ atus_wide <- atus_scaled %>%
   pivot_wider(values_from = value, names_from = description) %>% 
   select(-ID) %>% 
   as.matrix()
+
+# distance between categories
+atus_wide %>%  
+  t() %>% 
+  dist() %>% 
+  factoextra::fviz_dist(gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
 ```
 
 
@@ -197,6 +229,7 @@ gc()
 ```{r}
 # distance matrix for features
 dist_sc <- dist(atus_resampled, method = 'euclidean')
+
 # try single, centroid, and ward (D2) linkage hier clustering
 # hcl_single <- hclust(d = dist_sc, method = 'single')
 # hcl_centroid <- hclust(d = dist_sc, method = 'centroid')
@@ -224,13 +257,17 @@ plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
 ```{r}
 groupings <- cutree(hcl_ward, 3)
 # plot the clusters in PC space
-atus_pca$x[, 1:2] %>% 
+tmp_plot_data <- atus_pca$x[, 1:2] %>% 
   as_tibble() %>% 
-  mutate(Cluster = as.factor(groupings)) %>% 
-  ggplot(aes(x = PC1, y = PC2, color = Cluster)) +
+  mutate(Cluster = as.factor(groupings))
+tmp_plot_data %>% 
+  ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
+  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+               alpha = 0.1) +
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
        subtitle = 'Three cluster solution')
+rm(tmp_plot_data)
 ```
 
 
@@ -278,14 +315,19 @@ hcl_silhouette <- NbClust(
 )
 hcl_silhouette$All.index %>% plot(type = 'l', x = 2:14, main = 'Hierarchical: Silhouette', xlab = 'n clusters')
 
+
 # plot the clusters in PC space
-atus_pca$x[, 1:2] %>% 
+tmp_plot_data <- atus_pca$x[, 1:2] %>% 
   as_tibble() %>% 
-  mutate(Cluster = as.factor(hcl_ch$Best.partition)) %>% 
-  ggplot(aes(x = PC1, y = PC2, color = Cluster)) +
+  mutate(Cluster = as.factor(hcl_ch$Best.partition))
+tmp_plot_data %>% 
+  ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
+  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+               alpha = 0.1) +
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
        subtitle = paste0(hcl_ch$Best.nc[[1]], ' cluster solution'))
+rm(tmp_plot_data)
 ```
 
 ### Examine the demographics through the clusters
@@ -334,12 +376,16 @@ km_eleven <- kmeans(x = atus_resampled,
                   algorithm = 'Hartigan-Wong')
 
 # plot the clusters in PC space
-atus_pca$x[, 1:2] %>% 
+tmp_plot_data <- atus_pca$x[, 1:2] %>% 
   as_tibble() %>% 
-  mutate(Cluster = as.factor(km_eleven$cluster)) %>% 
-  ggplot(aes(x = PC1, y = PC2, color = Cluster)) +
+  mutate(Cluster = as.factor(km_eleven$cluster))
+tmp_plot_data %>% 
+  ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
+  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+               alpha = 0.1) +
   labs(title = 'K-means cluster solution in PC space')
+rm(tmp_plot_data)
 ```
 
 
@@ -358,6 +404,16 @@ demographics %>%
        subtitle = 'K-means cluster solution',
        x = NULL,
        y = NULL)
+```
+
+### Kmeans gap statistic
+
+```{r eval=FALSE, include=FALSE}
+gc()
+# takes an hour !!!!
+gap_stat <- cluster::clusGap(atus_resampled, FUN = kmeans, K.max = 20, nstart = 20, B = 25, iter.max = 20)
+
+factoextra::fviz_gap_stat(gap_stat)
 ```
 
 
