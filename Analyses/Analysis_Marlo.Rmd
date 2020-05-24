@@ -42,6 +42,9 @@ theme_set(theme_minimal())
 
 atus_long <- read_tsv('Data/atus.tsv')
 demographics <- read_tsv('Data/demographic.tsv')
+demographics <- demographics %>% 
+  mutate(has_child = n_child > 0) %>% 
+  select(-c('age_youngest', 'n_child', 'state'))
 ```
 
 
