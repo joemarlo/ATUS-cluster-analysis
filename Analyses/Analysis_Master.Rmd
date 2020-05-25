@@ -49,7 +49,10 @@ demographics <- demographics %>%
 
 # EDA
 
-Only contains weekend observations
+Note: Only contains weekend observations
+
+## The data and its distribution
+Note: redo this with the sample data??
 
 ```{r}
 # description of the data
@@ -68,6 +71,27 @@ atus_long %>%
 ```
 
 ```{r}
+# density plot of activities
+atus_long %>% 
+  group_by(description) %>% 
+  mutate(Mean = mean(value)) %>% 
+  ungroup() %>% 
+  mutate(description = paste0(round(Mean, 1), ' min: ', description)) %>% 
+  ggplot(aes(x = value, group = reorder(description, -Mean), fill = reorder(description, -Mean))) +
+  geom_density(alpha = 0.4) +
+  scale_fill_discrete(name = 'Mean minutes: Activity') +
+  scale_x_log10() +
+  labs(title = 'Time use activities',
+       # subtitle = 'Non-zero values only',
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = c(0.2, 0.6),
+        legend.box.background = element_rect(color = 'white'),
+        legend.background = element_rect(color = 'grey90'))
+        # legend.title = element_blank())
+```
+
+```{r}
 # plot of demographic data
 demographics %>% 
   select(-c('ID', 'survey_weight')) %>%
@@ -81,6 +105,27 @@ demographics %>%
        y = NULL)
 ```
 
+## Correlations and distances between activities
+
+```{r}
+# correlation between categories
+atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(-ID) %>% 
+  as.matrix() %>% 
+  cor() %>% 
+  reshape::melt() %>% 
+  ggplot(aes(x = reorder(X1, value), y = reorder(X2, value), fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2() +
+  labs(title = "Correlations between activities",
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        legend.title = element_blank())
+```
+
+
 ```{r}
 # distance between categories
 atus_long %>% 
@@ -89,11 +134,18 @@ atus_long %>%
   as.matrix() %>% 
   t() %>% 
   dist() %>% 
-  factoextra::fviz_dist(gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+  as.matrix() %>% 
+  reshape::melt() %>% 
+  ggplot(aes(x = reorder(X1, -value), y = reorder(X2, -value), fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(labels = scales::comma) +
+  labs(title = "Distance between activities",
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        legend.title = element_blank())
 ```
 
-
-## EDA
 
 ```{r} 
 # check for NAs
@@ -121,10 +173,19 @@ atus_wide <- atus_long %>%
   as.matrix()
 
 # distance between categories
-atus_wide %>%  
+atus_wide %>% 
   t() %>% 
   dist() %>% 
-  factoextra::fviz_dist(gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+  as.matrix() %>% 
+  reshape::melt() %>% 
+  ggplot(aes(x = reorder(X1, -value), y = reorder(X2, -value), fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(labels = scales::comma) +
+  labs(title = "Distance between activities",
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        legend.title = element_blank())
 ```
 
 
@@ -169,7 +230,7 @@ summary(atus_pca)$importance %>%
 
 ```{r include=FALSE}
 # memory management -------------------------------------------------------
-rm(atus_scaled, atus_wide, atus_cube_root, corr_matrix, pca_plot, cats_to_cube, total_rows)
+rm(atus_wide, corr_matrix, pca_plot, total_rows)
 gc()
 ```
 
@@ -203,8 +264,71 @@ factoextra::fviz_dend(
   labs(title = 'Ward (D2) linkage',
        subtitle = paste0(hcl_k, ' cluster solution'),
        x = NULL,
-       y = NULL)
+       y = NULL) +
+  theme(axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank())
 ```
+
+#### manually building ggplot dendrogram
+#### this confirms that dendrogram clusters are not left-to-right 1:6
+
+```{r}
+library(ggdendro)
+
+# basic, full tree
+dend_data <- dendro_data(dend, type = "rectangle")
+ggplot(dend_data$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend))
+
+# basic, full tree
+dend_data <- dendro_data(dend, type = "rectangle")
+groupings <- cutree(hcl_ward, hcl_k)
+dend_data$labels <- dend_data$labels %>% 
+  left_join(data.frame(cluster = as.factor(groupings),
+                   label = as.factor(1:length(groupings))))
+ggplot(dend_data$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
+  geom_text(data = dend_data$labels, aes(x, y, label = label, color = cluster),
+            hjust = 1, angle = 90, size = 5) +
+
+# trimmed, colored tree
+dend_cut <- cut(dend, h = 2000)$upper
+dend_data <- dendro_data(dend_cut, type = "rectangle")
+
+cluster_membership <- 
+  c(
+    rep(1, 30),
+    rep(NA, 2),
+    rep(2, 66-32),
+    rep(NA, 2),
+    rep(3, 106-68),
+    rep(NA, 2),
+    rep(4, 30),
+    rep(NA, 2),
+    rep(5, 14),
+    rep(6, 268 - 154)
+  )
+
+dend_data$segments$cluster <- as.factor(cluster_membership)
+linetypes <- c('solid', 'dashed')[as.numeric(is.na(dend_data$segments$cluster))+1]
+
+ggplot(dend_data$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend,
+               color = cluster),
+               linetype = linetypes) +
+  scale_x_continuous(labels = NULL) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = 'Ward (D2) linkage',
+       subtitle = '6 cluster solution',
+       x = NULL,
+       y = NULL) +
+  theme(axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none')
+```
+
 
 ```{r}
 groupings <- cutree(hcl_ward, hcl_k)
@@ -218,7 +342,9 @@ tmp_plot_data %>%
   geom_polygon(data = get_cluster_polygons(tmp_plot_data, x = "PC1", y = "PC2", cluster = 'Cluster'),
                alpha = 0.1) +
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
-       subtitle = 'Three cluster solution')
+       subtitle = 'Three cluster solution',
+       x = paste0('PC1: ', summary(atus_pca)$importance[2, 'PC1'] %>% scales::percent(accuracy = 0.1), ' variance explained'),
+       y = paste0('PC2: ', summary(atus_pca)$importance[2, 'PC2'] %>% scales::percent(accuracy = 0.1),  'variance explained'))
 rm(tmp_plot_data)
 ```
 
@@ -342,9 +468,68 @@ demographics %>%
 
 ```{r include=FALSE}
 # memory management -------------------------------------------------------
-rm(dist_sc, dend, dend_col, dend_col, groupings, sample_size)
+rm(dist_sc, groupings, sample_size)
 gc()
 ```
+
+## Notes on cluster demographics
+
+# Archetypes
+- Weekend workers:
+  - skews younger, sub 30
+  - yes children
+  - HS and some college
+  - across incomes
+  - not married
+  - across races
+  - skews heavily male,
+- Education:
+  - across ages
+  - skews toward having children
+  - slight skew towards some college, bachelors, masters
+  - skews toward upper income
+  - skews married
+  - across races
+  - skews toward women
+- Social, Leisure:
+ - skews older
+ - heavily no children
+ - heavily HS
+ - skews lower income
+ - skews not married
+ - skews black
+ - heavy skew male
+- Sports, exercise:
+  - heavy skew teenages
+  - children
+  - some HS
+  - skews heavy upper income
+  - not married
+  - heavy white
+  - heavy heavy male
+- Sleepers + personal care
+ - skews younger, sub 30
+ - slight skew towards children
+ - heavy heavy skew towards did not graduate from HS
+ - has child
+ - lower income
+ - skews not married
+ - black
+ - slightly female
+- Household activities:
+  - middle aged
+  - slight skew towards children
+  - bachelor's
+  - upper income
+  - heavily skewed towards married
+  - white
+  - heavy skew female
+  
+
+Qs:
+- does children / child under 12 mean child in the household, primary care, or adult children?
+- look at secondary activities
+- how to map clusters back to dendrogram?
 
 
 ### Optimizing hierarchical cluster sizes
