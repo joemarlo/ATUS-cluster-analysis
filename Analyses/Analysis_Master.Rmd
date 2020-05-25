@@ -1,6 +1,5 @@
 ---
 title: "ATUS Clustering"
-author: "Joe Marlo"
 date: "`r format(Sys.time(), '%B %d %Y')`"
 output:
   pdf_document:
@@ -18,12 +17,12 @@ knitr::opts_knit$set(root.dir = normalizePath(".."))
 ```
 
 ```{r include=FALSE}
-get_cluster_polys <- function(df, x, y, cluster){
+get_cluster_polygons <- function(df, x, y, cluster){
   # function returns polygons to draw around plot
   # usage: ggplot() + geom_polygon(data = hulls) +
-  # cluster must be a string
+  # x, y, and cluster must be strings
   
-  find_hull <- function(df) df[chull(df$x, df$y), ]
+  find_hull <- function(df) df[chull(df[[x]], df[[y]]), ]
   hulls <- plyr::ddply(df, cluster, find_hull)
   
   return(hulls)
@@ -34,7 +33,7 @@ get_cluster_polys <- function(df, x, y, cluster){
 ```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(pander)
-library(mclust)
+library(dendextend)
 library(NbClust)
 options(mc.cores = parallel::detectCores())
 set.seed(44)
@@ -43,7 +42,7 @@ theme_set(theme_minimal())
 atus_long <- read_tsv('Data/atus.tsv')
 demographics <- read_tsv('Data/demographic.tsv')
 demographics <- demographics %>% 
-  mutate(has_child = n_child > 0) %>% 
+  mutate(has_child = as.numeric(n_child > 0)) %>% 
   select(-c('age_youngest', 'n_child', 'state'))
 ```
 
@@ -110,75 +109,7 @@ atus_long %>%
        y = NULL)
 ```
 
-## Transformations
-
-```{r eval=FALSE, include=FALSE}
-# log transform the data
-cats_to_cube <- unique(atus_long$description)[
-  !(unique(atus_long$description) %in% c('Socializing, Relaxing, and Leisure', 'Sleep'))]
-atus_cube_root <- atus_long %>%
-  filter(description %in% cats_to_cube) %>% 
-  group_by(description) %>% 
-  mutate(value = value^(1/3)) %>%
-  ungroup() %>% 
-  bind_rows(
-    atus_long %>%
-      filter(!(description %in% cats_to_cube))
-  )
-
-atus_cube_root %>%
-  ggplot(aes(x = value)) +
-  geom_density() +
-  facet_wrap( ~ description, scales = "free") +
-  labs(title = 'Feature densities (cube-root-transformed)',
-       x = NULL,
-       y = NULL)
-```
-
-## Scale it
-
-# don't need to scale b/c already on the same unit: minutes
-
-
-```{r}
-# check spread of the data
-atus_cube_root %>% 
-  group_by(description) %>% 
-  summarize(variance = var(value)) %>% 
-  pander::pander(justify = c('left', 'right'), round = 2)
-
-# scale the data ??
-atus_scaled <- atus_long %>% 
-  group_by(description) %>% 
-  mutate(value = scale(value)) %>% 
-  ungroup()
-
-# check spread of the data
-atus_scaled %>% 
-  group_by(description) %>% 
-  summarize(variance = var(value)) %>% 
-  pander::pander(justify = c('left', 'right'), round = 2)
-
-# look at the data
-atus_scaled %>% 
-  ggplot(aes(x = value)) +
-  geom_density() +
-  facet_wrap(~description, scales = "free") + 
-  labs(title = 'Feature densities (cube and scaled transformed)', 
-       x = NULL)
-```
-
-<!-- ## double center -->
-<!-- <!-- ## multi-dimensional scaling --> -->
-
-<!-- ```{r} -->
-<!-- #  -->
-<!-- atus_wide <- atus_long %>%  -->
-<!--   pivot_wider(values_from = value, names_from = description) %>%  -->
-<!--   select(-ID) %>%  -->
-<!--   as.matrix() -->
-<!-- atus_wide <- scale(t(scale(t(atus_wide), scale = FALSE)), scale = FALSE) -->
-<!-- ``` -->
+## Don't need transformations or scaling because already on the same unit: minutes
 
 # pivot wider and check correlations between activities
 
@@ -226,10 +157,6 @@ IDs_kept <- atus_long %>%
   .[rows_to_keep,]
 atus_resampled <- atus_wide[rows_to_keep,]
 
-# pairs plot of resampled data
-# as_tibble(atus_resampled) %>% 
-#   GGally::ggpairs(mapping = aes(alpha = 0.2))
-
 # correlations
 corr_matrix <- cor(atus_resampled)
 corr_matrix[lower.tri(corr_matrix)] %>% density() %>% plot(main = 'Density of correlations between activities')
@@ -253,32 +180,34 @@ gc()
 # distance matrix for features
 dist_sc <- dist(atus_resampled, method = 'euclidean')
 
-# try single, centroid, and ward (D2) linkage hier clustering
-# hcl_single <- hclust(d = dist_sc, method = 'single')
-# hcl_centroid <- hclust(d = dist_sc, method = 'centroid')
+# ward (D2) linkage hier clustering
 hcl_ward <- hclust(d = dist_sc, method = 'ward.D2')
-
-
-library(dendextend)
-
-# dev.off()
-# par(mfrow = c(3, 1))
-# # nearest neighbors method
-# plot(hcl_single, hang = -1, main = 'Single Linkage', 
-#      labels = FALSE, xlab = '', sub = '')
-# # groups centroid
-# plot(hcl_centroid, hang = -1, main = 'Centroid Linkage', 
-#      labels = FALSE, xlab = '',  sub = '')
-# Ward’s minimum variance method, 
-# with dissimilarities are squared before clustering
 dend <- as.dendrogram(hcl_ward)
-hcl_k <- 5
-dend_col <- color_branches(dend, k = hcl_k)
-plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
+hcl_k <- 6
+# dend_col <- color_branches(dend, k = hcl_k)
+# plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
 ```
 
 ```{r}
-groupings <- cutree(hcl_ward, 6)
+# cleaned up dendrogram
+factoextra::fviz_dend(
+  cut(dend, h = 2000)$upper,
+  k = hcl_k,
+  # k_colors = c("#2E9FDF", "#00AFBB", "#E7B800", "#FC4E07"),
+  color_labels_by_k = TRUE,
+  show_labels = FALSE,
+  ggtheme = NULL,
+  lwd = 0.5,
+) + 
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = 'Ward (D2) linkage',
+       subtitle = paste0(hcl_k, ' cluster solution'),
+       x = NULL,
+       y = NULL)
+```
+
+```{r}
+groupings <- cutree(hcl_ward, hcl_k)
 # plot the clusters in PC space
 tmp_plot_data <- atus_pca$x[, c(1, 2)] %>% 
   as_tibble() %>% 
@@ -286,7 +215,7 @@ tmp_plot_data <- atus_pca$x[, c(1, 2)] %>%
 tmp_plot_data %>% 
   ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
-  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+  geom_polygon(data = get_cluster_polygons(tmp_plot_data, x = "PC1", y = "PC2", cluster = 'Cluster'),
                alpha = 0.1) +
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
        subtitle = 'Three cluster solution')
@@ -295,35 +224,25 @@ rm(tmp_plot_data)
 
 ### PCA pairs plot
 
-```{r}
+```{r eval=FALSE, include=FALSE}
 # pairs plot of each PCA component with points colored by cluster
-atus_pca$x %>% 
+atus_pca$x[, 1:10] %>% 
   as_tibble() %>%
-  pairs(., col = as.factor(groupings))
+  pairs(., col = as.factor(groupings), upper.panel = NULL)
 ```
 
 
 ### Examine activities through the clusters
 
 ```{r}
-atus_resampled %>%
-  as_tibble() %>% 
-  bind_cols(group = groupings) %>% 
-  pivot_longer(cols = -group) %>% 
-  ggplot(aes(x = value)) +
-  geom_density() +
-  scale_x_log10() +
-  facet_grid(group ~ name) +
-  labs(title = 'Activities split by cluster', 
-       x = NULL,
-       y = NULL)
-
+# densities of activities by cluster
 atus_resampled %>% 
   as_tibble() %>% 
   bind_cols(group = as.factor(groupings)) %>%
   pivot_longer(cols = -group) %>% 
   ggplot(aes(x = value, group = group, fill = group)) +
   geom_density(alpha = 0.3) +
+  scale_fill_brewer(palette = 'Accent') +
   scale_x_log10() +
   facet_wrap(~name, nrow = 3, scales = 'free') +
   labs(title = 'Activities split by cluster', 
@@ -335,6 +254,77 @@ atus_resampled %>%
 ### Examine the demographics through the clusters
 
 ```{r}
+mean_proportions <- demographics %>% 
+  right_join(bind_cols(IDs_kept)) %>%
+  select(-c('ID', 'survey_weight')) %>%  
+  mutate_all(as.character) %>% 
+  pivot_longer(cols = everything()) %>% 
+  group_by(name, value) %>% 
+  summarize(mean_proportion = n() / sample_size)
+
+demographics %>% 
+  right_join(bind_cols(IDs_kept, cluster = as.factor(groupings))) %>% 
+  select(-c('ID', 'survey_weight')) %>% 
+  mutate_all(as.character) %>% 
+  pivot_longer(cols = -cluster) %>% 
+  group_by(name, cluster) %>% 
+  mutate(cluster_n = n()) %>% 
+  group_by(name, value, cluster) %>% 
+  summarize(proportion = n() / first(cluster_n)) %>% 
+  left_join(mean_proportions) %>% 
+  mutate(relative_proportion = proportion - mean_proportion) %>% 
+  ungroup() %>% 
+  # refactor so order is correct
+  mutate(value = factor(value,
+                        levels = c(
+                          as.character(15:85),
+                          as.character(0:2),
+                          c(
+                            "5000",
+                            "7500",
+                            "10000",
+                            "12500",
+                            "15000",
+                            "20000",
+                            "25000",
+                            "30000",
+                            "35000",
+                            "40000",
+                            "50000",
+                            "60000",
+                            "75000",
+                            "1e+05",
+                            "150000"
+                          ),
+                          c("asian", "white", "black", "other"),
+                          c(
+                            "Did not graduate from HS",
+                            "HS",
+                            "Some college",
+                            "Bachelors",
+                            "Masters",
+                            "Doctoral"
+                          )
+                        ))) %>% 
+  ggplot(aes(x = value, y = relative_proportion, fill = relative_proportion)) +
+  geom_col() +
+  scale_fill_gradient2(low = 'red', mid = 'grey20', high = 'green') +
+  # facet_wrap(cluster ~ name, scales = 'free', ncol = 8) +
+  facet_grid(cluster ~ name, scales = 'free_x') +
+  labs(title = 'Demographics split by cluster',
+       subtitle = 'Relative proportion of values versus population', 
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1),
+        axis.text = element_text(size = 8))
+
+ggsave(filename = "Analyses/Plots/demographics_by_cluster.png",
+       width = 30,
+       height = 20)
+
+        
+
+
 demographics %>% 
   right_join(bind_cols(IDs_kept, group = groupings)) %>%
   select(-c('ID', 'survey_weight')) %>%
@@ -342,7 +332,7 @@ demographics %>%
   pivot_longer(cols = -group) %>% 
   ggplot(aes(x = value)) +
   geom_histogram(stat = 'count') +
-  facet_wrap(group ~ name, scales = 'free', ncol = 8) +
+  facet_grid(group ~ name, scales = 'free') +
   labs(title = 'Demographics split by cluster', 
        x = NULL,
        y = NULL)
@@ -350,7 +340,7 @@ demographics %>%
 
 ```{r include=FALSE}
 # memory management -------------------------------------------------------
-rm(dist_sc, dend, dend_col, hcl_k, dend_col, groupings, sample_size)
+rm(dist_sc, dend, dend_col, dend_col, groupings, sample_size)
 gc()
 ```
 
@@ -384,7 +374,7 @@ tmp_plot_data <- atus_pca$x[, 1:2] %>%
 tmp_plot_data %>% 
   ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
-  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+  geom_polygon(data = get_cluster_polygons(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
                alpha = 0.1) +
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
        subtitle = paste0(hcl_ch$Best.nc[[1]], ' cluster solution'))
@@ -443,7 +433,7 @@ tmp_plot_data <- atus_pca$x[, 1:2] %>%
 tmp_plot_data %>% 
   ggplot(aes(x = PC1, y = PC2, color = Cluster, fill = Cluster)) +
   geom_point(alpha = 0.3) +
-  geom_polygon(data = get_cluster_polys(tmp_plot_data, x = PC1, y = PC2, cluster = 'Cluster'),
+  geom_polygon(data = get_cluster_polygons(tmp_plot_data, x = 'PC1', y = 'PC2', cluster = 'Cluster'),
                alpha = 0.1) +
   labs(title = 'K-means cluster solution in PC space')
 rm(tmp_plot_data)
@@ -490,33 +480,3 @@ gap_stat <- cluster::clusGap(atus_resampled, FUN = kmeans, K.max = 20, nstart = 
 factoextra::fviz_gap_stat(gap_stat)
 ```
 
-
-## Model based  clustering
-
-```{r}
-# run model
-mcl <- Mclust(atus_resampled)
-summary(mcl)
-
-# plot 
-plot(mcl, what = "BIC")
-factoextra::fviz_mclust(mcl, "classification", geom = "point", alpha = 0.3)
-```
-
-
-### Examine the demographics through the clusters
-
-```{r}
-demographics %>% 
-  right_join(bind_cols(IDs_kept, cluster = as.factor(mcl$classification))) %>%
-  select(-c('ID', 'survey_weight')) %>%
-  mutate_all(as.character) %>% 
-  pivot_longer(cols = -cluster) %>% 
-  ggplot(aes(x = value)) +
-  geom_histogram(stat = 'count') +
-  facet_grid(cluster ~ name, scales = 'free') +
-  labs(title = 'Demographics split by cluster', 
-       subtitle = 'Model-based cluster solution',
-       x = NULL,
-       y = NULL)
-```
