@@ -281,18 +281,20 @@ dend_data <- dendro_data(dend, type = "rectangle")
 ggplot(dend_data$segments) + 
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend))
 
-# basic, full tree
+# full tree with labels colored by cluster
 dend_data <- dendro_data(dend, type = "rectangle")
 groupings <- cutree(hcl_ward, hcl_k)
-dend_data$labels <- dend_data$labels %>% 
+# join labels with cluster
+dend_data$labels <- dend_data$labels %>%
   left_join(data.frame(cluster = as.factor(groupings),
-                   label = as.factor(1:length(groupings))))
+                       label = as.factor(1:length(groupings))))
+# plot full tree with labels colored
 ggplot(dend_data$segments) + 
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend)) +
   geom_text(data = dend_data$labels, aes(x, y, label = label, color = cluster),
-            hjust = 1, angle = 90, size = 5) +
+            hjust = 1, angle = 90, size = 5)
 
-# trimmed, colored tree
+# trimmed, colored branches tree
 dend_cut <- cut(dend, h = 2000)$upper
 dend_data <- dendro_data(dend_cut, type = "rectangle")
 
@@ -331,7 +333,6 @@ ggplot(dend_data$segments) +
 
 
 ```{r}
-groupings <- cutree(hcl_ward, hcl_k)
 # plot the clusters in PC space
 tmp_plot_data <- atus_pca$x[, c(1, 2)] %>% 
   as_tibble() %>% 
