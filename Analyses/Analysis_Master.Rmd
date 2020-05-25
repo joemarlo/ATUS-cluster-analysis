@@ -248,6 +248,10 @@ atus_resampled %>%
   labs(title = 'Activities split by cluster', 
        x = NULL,
        y = NULL)
+
+ggsave(filename = "Analyses/Plots/activities_by_cluster.png",
+       width = 14,
+       height = 8)
 ```
 
 
@@ -321,8 +325,6 @@ demographics %>%
 ggsave(filename = "Analyses/Plots/demographics_by_cluster.png",
        width = 30,
        height = 20)
-
-        
 
 
 demographics %>% 
