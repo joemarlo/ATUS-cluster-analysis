@@ -205,13 +205,10 @@ pca_plot <- atus_pca$x[ , 1:3]
 ## Resampling the data using survey weights
 
 ```{r}
-# function to scale [0.1]
-scale_01 <- function(x) (x - min(x)) / (max(x) - min(x))
-
 # sample using survey weights
 total_rows <- nrow(atus_wide)
-sample_size <- 10000
-rows_to_keep <- sample(1:total_rows, size = sample_size, prob = scale_01(demographics$survey_weight), replace = TRUE)
+sample_size <- 25000
+rows_to_keep <- sample(1:total_rows, size = sample_size, prob = demographics$survey_weight, replace = TRUE)
 IDs_kept <- atus_long %>% 
   pivot_wider(values_from = value, names_from = description) %>% 
   select(ID) %>% 
@@ -230,7 +227,7 @@ summary(atus_pca)$importance %>%
 
 ```{r include=FALSE}
 # memory management -------------------------------------------------------
-rm(atus_wide, corr_matrix, pca_plot, total_rows)
+rm(corr_matrix, pca_plot, total_rows)
 gc()
 ```
 
@@ -247,7 +244,16 @@ dend <- as.dendrogram(hcl_ward)
 hcl_k <- 6
 # dend_col <- color_branches(dend, k = hcl_k)
 # plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
+groupings <- cutree(hcl_ward, hcl_k)
 ```
+
+```{r}
+# save the cluster memberships
+IDs_kept %>% 
+  bind_cols(cluster = groupings) %>% 
+  write_csv('Analyses/25k_6_cluster_IDs.csv')
+```
+
 
 ```{r}
 # cleaned up dendrogram
@@ -267,8 +273,7 @@ factoextra::fviz_dend(
        y = NULL) +
   theme(axis.ticks = element_blank(),
         panel.grid.major.x = element_blank(),
-        panel.grid.minor.x = element_blank()) +
-  guides(linetype = FALSE, col = TRUE)
+        panel.grid.minor.x = element_blank())
 ```
 
 #### manually building ggplot dendrogram
@@ -461,14 +466,6 @@ ggsave(filename = "Analyses/Plots/dendrogram_colored_manually.png",
        height = 5)
 ```
 
-```{r}
-p <- ggplot(mtcars, aes(wt, mpg, label = rownames(mtcars)))
-
-p + geom_text()
-# Avoid overlaps
-p + geom_text(check_overlap = TRUE)
-```
-
 
 
 ```{r}
@@ -484,7 +481,7 @@ tmp_plot_data %>%
   labs(title = 'Hierarchical Ward D2 cluster solution in PC space',
        subtitle = 'Three cluster solution',
        x = paste0('PC1: ', summary(atus_pca)$importance[2, 'PC1'] %>% scales::percent(accuracy = 0.1), ' variance explained'),
-       y = paste0('PC2: ', summary(atus_pca)$importance[2, 'PC2'] %>% scales::percent(accuracy = 0.1),  'variance explained'))
+       y = paste0('PC2: ', summary(atus_pca)$importance[2, 'PC2'] %>% scales::percent(accuracy = 0.1),  ' variance explained'))
 rm(tmp_plot_data)
 ```
 
@@ -518,6 +515,24 @@ atus_resampled %>%
 ggsave(filename = "Analyses/Plots/activities_by_cluster.png",
        width = 14,
        height = 8)
+```
+
+```{r}
+# densities of activities by cluster; non-log scale; outliers trimmed
+atus_resampled %>% 
+  as_tibble() %>% 
+  bind_cols(group = as.factor(groupings)) %>%
+  pivot_longer(cols = -group) %>%
+  group_by(name) %>% 
+  filter(value <= quantile(value, 0.99)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = value, group = group, fill = group)) +
+  geom_density(alpha = 0.3) +
+  scale_fill_brewer(palette = 'Accent') +
+  facet_wrap(~name, nrow = 3, scales = 'free') +
+  labs(title = 'Activities split by cluster', 
+       x = NULL,
+       y = NULL)
 ```
 
 
@@ -623,6 +638,7 @@ gc()
   - not married
   - across races
   - skews heavily male,
+  -Notes: george to research if differneces in employment in high school 
 - Education:
   - across ages
   - skews toward having children
@@ -671,6 +687,9 @@ Qs:
 - look at secondary activities
 - how to map clusters back to dendrogram?
 
+- look at data dictionary
+- see if there is any outstanding research on these archetypes
+- figure out how to make side-by-side publishable plots for each cluster
 
 ### Optimizing hierarchical cluster sizes
 
@@ -678,20 +697,20 @@ Qs:
 # get optimal cluster sizes: c(g)
 hcl_ch <- NbClust(
   data = atus_resampled,
-  max.nc = 14,
+  max.nc = 10,
   method = 'ward.D2',
   index = 'ch'
 )
-hcl_ch$All.index %>% plot(type = 'l', x = 2:14, main = 'Hierarchical: C(g) index', xlab = 'n clusters')
+hcl_ch$All.index %>% plot(type = 'l', x = 2:10, main = 'Hierarchical: C(g) index', xlab = 'n clusters')
 
 # get optimal cluster sizes: silhouette width
 hcl_silhouette <- NbClust(
   data = atus_resampled,
-  max.nc = 14,
+  max.nc = 7,
   method = 'ward.D2',
   index = 'silhouette'
 )
-hcl_silhouette$All.index %>% plot(type = 'l', x = 2:14, main = 'Hierarchical: Silhouette', xlab = 'n clusters')
+hcl_silhouette$All.index %>% plot(type = 'l', x = 2:7, main = 'Hierarchical: Silhouette', xlab = 'n clusters')
 
 
 # plot the clusters in PC space
