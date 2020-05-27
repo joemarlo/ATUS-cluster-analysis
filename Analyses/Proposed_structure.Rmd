@@ -132,22 +132,40 @@ density_plot_data %>%
         # legend.title = element_blank())
 ```
 
+
+## Demographics of the respondents
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+drop race
+
+
+# Clustering
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Process
+- hierarchial
+- discuss but don't show: kmeans
+- discuss but don't show: c(g) and silhouette metrics
+- no need for transformations / scaling
+
 ```{r fig.height=4, fig.width=7}
 # correlation between categories
-atus_long %>% 
-  pivot_wider(values_from = value, names_from = description) %>% 
-  select(-ID) %>% 
-  as.matrix() %>% 
-  cor() %>% 
-  reshape::melt() %>% 
-  ggplot(aes(x = reorder(X1, value), y = reorder(X2, value), fill = value)) +
-  geom_tile() +
-  scale_fill_gradient2() +
-  labs(title = "Correlations between activities",
-       x = NULL,
-       y = NULL) +
-  theme(axis.text.x = element_text(angle = 40, hjust = 1),
-        legend.title = element_blank())
+# atus_long %>% 
+#   pivot_wider(values_from = value, names_from = description) %>% 
+#   select(-ID) %>% 
+#   as.matrix() %>% 
+#   cor() %>% 
+#   reshape::melt() %>% 
+#   ggplot(aes(x = reorder(X1, value), y = reorder(X2, value), fill = value)) +
+#   geom_tile() +
+#   scale_fill_gradient2() +
+#   labs(title = "Correlations between activities",
+#        x = NULL,
+#        y = NULL) +
+#   theme(axis.text.x = element_text(angle = 40, hjust = 1),
+#         legend.title = element_blank())
 ```
 
 ```{r fig.height=4, fig.width=7}
@@ -169,23 +187,6 @@ atus_long %>%
   theme(axis.text.x = element_text(angle = 40, hjust = 1),
         legend.title = element_blank())
 ```
-
-
-## Demographics of the respondents
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-drop race
-
-
-# Clustering
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Process
-- hierarchial
-- discuss but don't show: kmeans
-- discuss but don't show: c(g) and silhouette metrics
 
 
 ```{r}
@@ -221,11 +222,10 @@ dist_sc <- dist(atus_resampled, method = 'euclidean')
 
 # ward (D2) linkage hier clustering
 hcl_ward <- hclust(d = dist_sc, method = 'ward.D2')
-dend <- as.dendrogram(hcl_ward)
+# dend <- as.dendrogram(hcl_ward)
 hcl_k <- 6
 # dend_col <- color_branches(dend, k = hcl_k)
 # plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
-groupings <- cutree(hcl_ward, hcl_k)
 ```
 
 
@@ -240,10 +240,53 @@ dend <- cut(dend, h = 300)$upper # cut off bottom of dendogram for computation p
 ggd1 <- as.ggdend(dend)
 ```
 
+
+```{r}
+# get labels from model
+groupings <- cutree(hcl_ward, hcl_k)
+
+# fix label switching problem
+# get approx cluster size by counting line segments by color (proxy for cluster)
+label_match <- ggd1$segments %>% 
+  filter(col != '<NA>') %>% 
+  group_by(col) %>% 
+  filter(xend <= quantile(xend, 0.99),
+         xend >= quantile(xend, 0.01)) %>% 
+  summarize(x_min = min(xend),
+            x_max = max(xend)) %>% 
+  arrange(x_min) %>% 
+    mutate(Approx_cluster_size = x_max - x_min,
+           Cluster = 1:6) %>% 
+  arrange(desc(Approx_cluster_size)) %>% 
+  mutate(Actual_cluster = names(rev(sort(table(groupings))))) %>% 
+  select(Dend_cluster = Cluster,
+         Actual_cluster,
+         col)
+
+# replace groupings with similar vector but with switched labels
+correct_clusters <- label_match$Dend_cluster[match(groupings, label_match$Actual_cluster)]
+rm(groupings)
+```
+
+```{r}
+# match brewer palette colors to cluster assignment
+label_match <- label_match %>% 
+  arrange(Dend_cluster) %>% 
+  mutate(brew_palette = RColorBrewer::brewer.pal(hcl_k, 'Spectral'))
+
+# replace colors with brewer colors
+ggd1$segments$col <- label_match$brew_palette[match(ggd1$segments$col, label_match$col)]
+```
+
+
+
 ```{r fig.height=4, fig.width=7}
 # set dashed line for non-cluster segements
 ggd1$segments$linetype <- 'solid'
 ggd1$segments$linetype[which(is.na(ggd1$segments$col))] <- 'dashed'
+
+# set connecting lines to grey
+ggd1$segments$col[is.na(ggd1$segments$col)] <- 'grey50'
 
 # set labels for below the plot
 text_labels <- tribble(
@@ -256,14 +299,15 @@ text_labels <- tribble(
   'Cluster 6', 21000, -2000
 )
 
+# plot the dendrogram
 ggplot(ggd1$segments) + 
-  geom_segment(aes(x = x, y = y, xend = xend, yend = yend, color = col),
-               linetype = ggd1$segments$linetype, alpha = 0.6) +
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend), color = ggd1$segments$col,
+               linetype = ggd1$segments$linetype, lwd = 0.6) +
   geom_text(data = text_labels, aes(label = label, x = x, y = y)) +
   coord_cartesian(ylim = c(100, 45000), clip = 'off') +
   scale_x_continuous(labels = NULL) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(title = 'Ward (D2) linkage with manual cluster labels',
+  scale_y_continuous(labels = NULL) +
+  labs(title = 'Ward (D2) linkage',
        subtitle = '6 cluster solution',
        x = NULL,
        y = NULL) +
@@ -285,28 +329,6 @@ Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor i
 - Cluster 5  
 - Cluster 6: Catch all 'Other'  
 
-```{r}
-# NEED TO FIX LABEL SWITCHING PROBLEM HERE
-# get approx cluster size by counting line segments by color (proxy for cluster)
-label_match <- ggd1$segments %>% 
-  filter(col != '<NA>') %>% 
-  group_by(col) %>% 
-  filter(xend <= quantile(xend, 0.99),
-         xend >= quantile(xend, 0.01)) %>% 
-  summarize(x_min = min(xend),
-            x_max = max(xend)) %>% 
-  arrange(x_min) %>% 
-    mutate(Approx_cluster_size = x_max - x_min,
-           Cluster = 1:6) %>% 
-  arrange(desc(Approx_cluster_size)) %>% 
-  mutate(Actual_cluster = names(rev(sort(table(groupings))))) %>% 
-  select(Dend_cluster = Cluster,
-         Actual_cluster)
-
-# replace groupings with similar vector but with switched labels
-correct_clusters <- label_match$Dend_cluster[match(groupings, label_match$Actual_cluster)]
-rm(groupings)
-```
 
 ```{r}
 # activity densities lined up by cluster
@@ -353,8 +375,8 @@ atus_resampled %>%
   pivot_longer(cols = -group) %>% 
   filter(name %in% activities_show) %>% 
   ggplot(aes(x = value, group = group, fill = group)) +
-  geom_density(color = 'grey50', alpha = 0.3) +
-  scale_fill_brewer(palette = 'Accent', name = 'Cluster') +
+  geom_density(color = 'grey50', alpha = 0.7) +
+  scale_fill_brewer(palette = 'Spectral', name = 'Cluster') +
   scale_y_continuous(labels = NULL) +
   scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
   facet_wrap(~name, nrow = 5, scales = 'free_y') +
@@ -608,8 +630,189 @@ edu_plot <- recoded_pop %>%
 ```
 
 ```{r fig.height=6, fig.width=7}
-gridExtra::grid.arrange(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
+# gridExtra::grid.arrange(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
 ```
+
+```{r}
+# attempt to color them to match the cluster colors
+# set custom colors
+custom_colors <- rep(RColorBrewer::brewer.pal(hcl_k, 'Spectral'), each = 2)
+# lighten every other color
+custom_colors[((1:hcl_k %% 2) + 1) == 1] <- colorspace::lighten(custom_colors[((1:hcl_k %% 2) + 1) == 1], amount = 0.7)
+# set names to match the aes(fill)
+names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
+                               '-',
+                               rep(c('Male', 'Female'), hcl_k))
+
+
+sex_plot_2 <- recoded_pop %>% 
+  select(Sex, cluster) %>%
+  group_by(cluster, Sex) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  mutate(fill = paste0(cluster, '-', Sex)) %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = fill, fill = fill, color = Sex)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Sex'] %>% count(Sex) %>% mutate(Proportion = n / sum(n)) %>% filter(Sex == 'Male'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
+  annotate(geom = 'text', x = 1, y = 0.3, 
+           label = 'Male', color = 'white', fontface = 'bold', size = 3) +
+  annotate(geom = 'text', x = 1, y = 0.7, 
+           label = 'Female', color = 'grey30', fontface = 'bold', size = 3) +
+  annotate(geom = 'text', x = 5, y = 0.53, 
+           label = 'Population mean', color = 'grey30', fontface = 'bold', size = 3) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = 'Clusters split by sex', 
+       x = NULL,
+       y = 'Proportion of cluster population') +
+  theme(legend.position = 'bottom')
+```
+
+```{r}
+# set names to match the aes(fill)
+names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
+                               '-',
+                               rep(c('No children', 'Children in household'), hcl_k))
+
+# bar plot by child status
+child_plot_2 <- recoded_pop %>% 
+  select(Child, cluster) %>%
+  group_by(cluster, Child) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  mutate(Child = paste0(cluster, '-', Child)) %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Child, fill = Child)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Child'] %>% count(Child) %>% mutate(Proportion = n / sum(n)) %>% filter(Child == 'No children'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
+  annotate(geom = 'text', x = 1, y = 0.3, 
+           label = 'No children', color = 'white', fontface = 'bold', size = 3) +
+  annotate(geom = 'text', x = 1, y = 0.8, 
+           label = 'Children in\n household', color = 'grey30', fontface = 'bold', size = 3) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = '...by children in household', 
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = 'bottom')
+```
+
+```{r}
+# set names to match the aes(fill)
+names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
+                               '-',
+                               rep(c('Not married', 'Married'), hcl_k))
+
+# bar plot by marital status
+marital_plot_2 <- recoded_pop %>% 
+  select(Married, cluster) %>%
+  group_by(cluster, Married) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  mutate(Married = paste0(cluster, '-', Married)) %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Married, fill = Married)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Married'] %>% count(Married) %>% mutate(Proportion = n / sum(n)) %>% filter(Married == 'Not married'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
+  annotate(geom = 'text', x = 1, y = 0.3, 
+           label = 'Not married', color = 'white', fontface = 'bold', size = 3) +
+  annotate(geom = 'text', x = 1, y = 0.7, 
+           label = 'Married', color = 'grey30', fontface = 'bold', size = 3) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = '...by marital status', 
+       x = NULL,
+       y = '') +
+  theme(legend.position = 'bottom')
+```
+
+
+```{r}
+# attempt to color them to match the cluster colors
+# set custom colors
+custom_colors <- RColorBrewer::brewer.pal(hcl_k, 'Spectral')
+custom_colors <- append(custom_colors, '#ababab')
+# darken some and lighten others
+custom_colors <- map(custom_colors, function(col) {
+  col1 <- colorspace::darken(col, amount = 0.5)
+  col2 <- colorspace::darken(col, amount = 0.3)
+  col3 <- colorspace::darken(col, amount = 0.3)
+  col4 <- col
+  col5 <- colorspace::lighten(col, amount = 0.4)
+  col6 <- colorspace::lighten(col, amount = 0.7)
+  return(c(col1, col2, col3, col4, col5, col6))
+}) %>% unlist()
+
+# set names to match the aes(fill)
+base_vector <- factor(c("Cluster\n1", 2:6, 'Population'), levels = c("Cluster\n1", 2:6, 'Population'))
+names(custom_colors) <- paste0(rep(base_vector, each = 6),
+                               '-',
+                               rep(c('Did not graduate from HS', 'HS', 'Some college', 'Bachelors', 'Masters', 'Doctoral'), hcl_k))
+
+# barplot(1:length(custom_colors), col = custom_colors)
+
+# set labels for below the plot
+text_labels <- tibble(
+  label = c(
+    'Did not graduate from HS',
+    'HS',
+    'Some college',
+    'Bachelors',
+    'Masters',
+    'Doctoral'
+  ),
+  x = 7.8,
+  y = c(0.08, 0.32, 0.57, 0.82, 0.92, 0.99),
+  col = tail(custom_colors, 6))
+        
+# bar plot by education status
+edu_status <- recoded_pop %>% 
+  na.omit() %>% 
+  select(Education, cluster) %>%
+  group_by(cluster, Education) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup()
+
+edu_plot_2 <- recoded_pop %>% 
+  na.omit() %>% 
+  select(Education) %>%
+  count(Education) %>% 
+  mutate(Proportion = n / sum(n),
+         cluster = 'Population') %>% 
+  ungroup() %>% 
+  bind_rows(edu_status) %>% 
+  mutate(Education = factor(Education, levels = rev(c('Did not graduate from HS', 'HS', 'Some college', 'Bachelors', 'Masters', 'Doctoral'))),
+         cluster = factor(cluster, levels = c("Cluster\n1", 2:6, 'Population'))) %>%
+  mutate(fill = paste0(cluster, '-', Education)) %>% 
+  ggplot(aes(x = cluster, y = Proportion)) +
+  geom_col(aes(group = Education, fill = fill), position = 'stack', color = 'white') +
+  scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
+  geom_text(data = text_labels, aes(label = label, x = x, y = y), hjust = 0, color = text_labels$col, size = 3) +
+  scale_y_continuous(labels = NULL) +
+  coord_cartesian(xlim = c(1, 9), clip = 'off') +
+  labs(title = '...by education', 
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = 'none')
+```
+
+
+```{r fig.height=6, fig.width=7}
+gridExtra::grid.arrange(sex_plot_2, child_plot_2, marital_plot_2, edu_plot_2, ncol = 2)
+```
+
 
 
 # Conclusion
