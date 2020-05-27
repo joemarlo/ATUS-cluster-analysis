@@ -1,0 +1,620 @@
+---
+title: "Proposed structure"
+author: "Joe Marlo"
+date: "5/27/2020"
+output: pdf_document
+toc: true
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_knit$set(root.dir = normalizePath(".."))
+```
+
+```{r include=FALSE}
+get_cluster_polygons <- function(df, x, y, cluster){
+  # function returns polygons to draw around plot
+  # usage: ggplot() + geom_polygon(data = hulls) +
+  # x, y, and cluster must be strings
+  
+  find_hull <- function(df) df[chull(df[[x]], df[[y]]), ]
+  hulls <- plyr::ddply(df, cluster, find_hull)
+  
+  return(hulls)
+}
+
+
+theme_custom <- function() {
+  theme_minimal() +
+    theme(
+      # panel.grid.major.y = element_line(color = "gray95"),
+      panel.grid.minor.y = element_blank(),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank(),
+    )
+}
+```
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(pander)
+library(dendextend)
+library(NbClust)
+options(mc.cores = parallel::detectCores())
+set.seed(44)
+theme_set(theme_custom())
+
+atus_long <- read_tsv('Data/atus.tsv')
+demographics <- read_tsv('Data/demographic.tsv')
+demographics <- demographics %>% 
+  mutate(has_child = as.numeric(n_child > 0)) %>% 
+  select(-c('age_youngest', 'n_child', 'state'))
+```
+
+# Introduction and research question
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+
+## Key findings
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+
+## Clustering process
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+
+- clustering on the data
+- why clustering
+
+
+## The data
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+key points
+ - weekend only
+ - going to examine a weighted samplen of 25k
+
+```{r}
+# description of the data
+atus_long %>% 
+  group_by(description) %>% 
+  summarize(Mean = mean(value),
+            part_rate = mean(value > 0)) %>% 
+  arrange(desc(Mean)) %>% 
+  mutate(Type = 'Continuous') %>% 
+  janitor::adorn_totals() %>% 
+  mutate(Mean = round(Mean, 0),
+         part_rate = round(part_rate, 2),
+         part_rate = ifelse(part_rate == 6.34, '-', part_rate)) %>% 
+  select(Activity = description, Type, Mean, 'Participation rate' = part_rate) %>% 
+  pander::pander(justify = c("left", "left", 'right', 'right'))
+```
+
+```{r}
+# density plot of activities
+
+# add mean minutes infront of each activity name
+density_plot_data <- atus_long %>% 
+  group_by(description) %>% 
+  mutate(Mean = round(mean(value), 0)) %>% 
+  ungroup() %>% 
+  mutate(description = paste0(round(Mean, 1), ' min: ', description))
+
+# sort the label by the mean and move 'other' to bottom
+label_order <- density_plot_data %>% 
+  distinct(description, Mean) %>% 
+  arrange(desc(Mean))
+label_order <- label_order[c(1:10, 12:15, 11),]
+
+# plot it
+density_plot_data %>% 
+  mutate(description = factor(description,
+                              levels = label_order$description)) %>% 
+  ggplot(aes(x = value, group = description, fill = description)) +
+  geom_density(color = 'grey50', alpha = 0.4) +
+  scale_fill_discrete(name = 'Mean minutes: Activity') +
+  scale_x_log10() +
+  labs(title = 'Weekend Time use activities',
+       subtitle = 'Non-zero values only',
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = c(0.2, 0.6),
+        legend.box.background = element_rect(color = 'white'),
+        legend.background = element_rect(color = 'grey90'),
+        legend.text = element_text(size = 7),
+        legend.key.size = unit(0.4, "cm"))
+        # legend.title = element_blank())
+```
+
+```{r fig.height=4, fig.width=7}
+# correlation between categories
+atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(-ID) %>% 
+  as.matrix() %>% 
+  cor() %>% 
+  reshape::melt() %>% 
+  ggplot(aes(x = reorder(X1, value), y = reorder(X2, value), fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2() +
+  labs(title = "Correlations between activities",
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        legend.title = element_blank())
+```
+
+```{r fig.height=4, fig.width=7}
+# distance between categories
+atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(-ID) %>% 
+  as.matrix() %>% 
+  t() %>% 
+  dist() %>% 
+  as.matrix() %>% 
+  reshape::melt() %>% 
+  ggplot(aes(x = reorder(X1, -value), y = reorder(X2, -value), fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(labels = scales::comma) +
+  labs(title = "Distance between activities",
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+        legend.title = element_blank())
+```
+
+
+## Demographics of the respondents
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+drop race
+
+
+# Clustering
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Process
+- hierarchial
+- discuss but don't show: kmeans
+- discuss but don't show: c(g) and silhouette metrics
+
+
+```{r}
+# pivot wider and turn into matrix
+atus_wide <- atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(-ID) %>% 
+  as.matrix()
+```
+
+```{r}
+# resample using survey weights
+total_rows <- nrow(atus_wide)
+sample_size <- 25000
+rows_to_keep <- sample(1:total_rows, size = sample_size, prob = demographics$survey_weight, replace = TRUE)
+IDs_kept <- atus_long %>% 
+  pivot_wider(values_from = value, names_from = description) %>% 
+  select(ID) %>% 
+  .[rows_to_keep,]
+atus_resampled <- atus_wide[rows_to_keep,]
+```
+
+```{r}
+# run PCA
+atus_pca <- prcomp(atus_resampled)
+summary(atus_pca)$importance[, 1:6] %>% 
+    pander::pander(justify = c('left', rep('right', 6)), round = 2)
+```
+
+```{r}
+# distance matrix for features
+dist_sc <- dist(atus_resampled, method = 'euclidean')
+
+# ward (D2) linkage hier clustering
+hcl_ward <- hclust(d = dist_sc, method = 'ward.D2')
+dend <- as.dendrogram(hcl_ward)
+hcl_k <- 6
+# dend_col <- color_branches(dend, k = hcl_k)
+# plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
+groupings <- cutree(hcl_ward, hcl_k)
+```
+
+
+## Discuss dendrogram
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+```{r}
+# trimmed, colored branches tree
+dend <- as.dendrogram(hcl_ward) %>% set("branches_k_color", k = hcl_k) %>% set("labels_colors")
+dend <- cut(dend, h = 300)$upper # cut off bottom of dendogram for computation performance
+ggd1 <- as.ggdend(dend)
+```
+
+```{r fig.height=4, fig.width=7}
+# set dashed line for non-cluster segements
+ggd1$segments$linetype <- 'solid'
+ggd1$segments$linetype[which(is.na(ggd1$segments$col))] <- 'dashed'
+
+# set labels for below the plot
+text_labels <- tribble(
+  ~label, ~x, ~y,
+  'Cluster 1', 1800, -2000,
+  'Cluster 2', 4500, -2000,
+  'Cluster 3', 8500, -2000,
+  'Cluster 4', 13500, -2000,
+  'Cluster 5', 16500, -2000,
+  'Cluster 6', 21000, -2000
+)
+
+ggplot(ggd1$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend, color = col),
+               linetype = ggd1$segments$linetype, alpha = 0.6) +
+  geom_text(data = text_labels, aes(label = label, x = x, y = y)) +
+  coord_cartesian(ylim = c(100, 45000), clip = 'off') +
+  scale_x_continuous(labels = NULL) +
+  scale_y_continuous(labels = scales::comma) +
+  labs(title = 'Ward (D2) linkage with manual cluster labels',
+       subtitle = '6 cluster solution',
+       x = NULL,
+       y = NULL) +
+  theme(axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
+```
+
+# Breaking down the clusters
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+- Cluster 1:   
+- Cluster 2  
+- Cluster 3  
+- Cluster 4  
+- Cluster 5  
+- Cluster 6: Catch all 'Other'  
+
+```{r}
+# NEED TO FIX LABEL SWITCHING PROBLEM HERE
+# get approx cluster size by counting line segments by color (proxy for cluster)
+label_match <- ggd1$segments %>% 
+  filter(col != '<NA>') %>% 
+  group_by(col) %>% 
+  filter(xend <= quantile(xend, 0.99),
+         xend >= quantile(xend, 0.01)) %>% 
+  summarize(x_min = min(xend),
+            x_max = max(xend)) %>% 
+  arrange(x_min) %>% 
+    mutate(Approx_cluster_size = x_max - x_min,
+           Cluster = 1:6) %>% 
+  arrange(desc(Approx_cluster_size)) %>% 
+  mutate(Actual_cluster = names(rev(sort(table(groupings))))) %>% 
+  select(Dend_cluster = Cluster,
+         Actual_cluster)
+
+# replace groupings with similar vector but with switched labels
+correct_clusters <- label_match$Dend_cluster[match(groupings, label_match$Actual_cluster)]
+rm(groupings)
+```
+
+```{r}
+# activity densities lined up by cluster
+atus_resampled %>% 
+  as_tibble() %>% 
+  bind_cols(group = as.character(correct_clusters)) %>%
+  mutate(group = if_else(group == '1', 'Cluster 1', group),
+         group = factor(group, levels = c("Cluster 1", 2:6))) %>% 
+  pivot_longer(cols = -group) %>% 
+  # move 'other' to end of list
+  mutate(name = factor(name, levels = c(colnames(atus_resampled)[-7], 'Other'))) %>% 
+  ggplot(aes(x = value, group = name, fill = name)) +
+  geom_density(alpha = 0.3, color = 'grey50', size = 0.5) +
+  # scale_fill_discrete(name = NULL) +
+  viridis::scale_fill_viridis(discrete = TRUE, name = NULL) +
+  scale_x_log10(limits = c(10, 1200)) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(group~., switch = 'y') +
+  labs(title = 'Weekend activities split by cluster',
+       x = 'Minutes per day',
+       y = NULL)
+```
+
+
+## Zoom on on specific activities
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Discuss how this cluster split this activities the most
+
+```{r}
+# activites to show
+activities_show <- c(
+  'Caring For Household Member',
+  'Household Activities',
+  'Socializing, Relaxing, and Leisure',
+  'Volunteer',
+  'Work')
+
+# densities of activities by cluster
+atus_resampled %>% 
+  as_tibble() %>% 
+  bind_cols(group = as.factor(correct_clusters)) %>%
+  pivot_longer(cols = -group) %>% 
+  filter(name %in% activities_show) %>% 
+  ggplot(aes(x = value, group = group, fill = group)) +
+  geom_density(color = 'grey50', alpha = 0.3) +
+  scale_fill_brewer(palette = 'Accent', name = 'Cluster') +
+  scale_y_continuous(labels = NULL) +
+  scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
+  facet_wrap(~name, nrow = 5, scales = 'free_y') +
+  labs(title = 'Least similar activities after cut by cluster', 
+       x = 'Minutes per day',
+       y = NULL)
+```
+
+
+## Discuss demographics
+
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+discuss how some of the cluster difference are associated with different demographics
+
+Age, income, married, child, educate, gender
+
+```{r}
+population <- demographics %>% 
+  right_join(bind_cols(IDs_kept)) %>%
+  mutate(cluster = as.character(correct_clusters[match(ID, pull(IDs_kept))])) %>% 
+  select(-survey_weight) %>% 
+  rename(Age = age, Sex = sex, 'Household income' = HH_income, Married = married, 
+         Race = race, Education = education)
+```
+
+```{r fig.height=5, fig.width=7}
+# continuous
+# population %>% 
+#   select(Age, `Household income`, cluster) %>%
+#   mutate(cluster = if_else(cluster == '1', 'Cluster 1', cluster),
+#          cluster = factor(cluster, levels = c("Cluster 1", 2:6))) %>% 
+#   pivot_longer(cols = c('Age', 'Household income')) %>%
+#   ggplot(aes(x = value, fill = cluster)) +
+#   geom_density(data = population %>% select(Age, `Household income`) %>% pivot_longer(cols = everything()),
+#                aes(x = value), alpha = 0.3, fill = 'grey40', color = 'grey50') +
+#   geom_density(alpha = 0.3, color = 'grey50') +
+#   scale_fill_discrete(name = NULL) +
+#   # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+#   scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
+#   scale_y_continuous(labels = NULL) +
+#   facet_grid(cluster~name, scales = 'free') +
+#   labs(title = 'Change this plot?',
+#        x = NULL,
+#        y = NULL) +
+#   theme(legend.position = 'none')
+```
+
+```{r}
+Age_plot <- population %>% 
+  select(Age, cluster) %>%
+  mutate(cluster = if_else(cluster == '1', 'Cluster 1', cluster),
+         cluster = factor(cluster, levels = c("Cluster 1", 2:6))) %>% 
+  pivot_longer(cols = c('Age')) %>%
+  ggplot(aes(x = value, fill = cluster)) +
+  geom_density(data = population %>% select(Age) %>% pivot_longer(cols = everything()),
+               aes(x = value), alpha = 0.7, fill = 'grey40', color = 'grey50') +
+  geom_density(alpha = 0.7, color = 'grey50') +
+  # scale_fill_discrete(name = NULL) +
+  scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  # scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(cluster~name, scales = 'free',  switch = 'y') +
+  labs(title = 'Age',
+       subtitle = 'Grey distributions represent the population',
+       x = 'Age',
+       y = NULL) +
+  theme(legend.position = 'none',
+        strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        plot.margin = unit(c(0.2, 0.2, .9, 0.2), units = 'cm'))
+```
+
+```{r}
+# barplot for income levels
+income_levels <- c("0", "5,000", "7,500", "10,000", "12,500", "15,000", "20,000", "25,000", "30,000",  "35,000", "40,000", "50,000", "60,000", "75,000", "100,000", "150,000")
+
+hline_data <- population %>% 
+  mutate('Household income' = as.character(scales::comma(`Household income`))) %>%
+  select('Household income') %>% 
+  count(`Household income`) %>%
+  na.omit() %>% 
+  mutate(proportion = n / sum(n),
+         `Household income` = factor(`Household income`, levels = income_levels))
+
+income_plot <- population %>% 
+  select('Household income', cluster) %>%
+  mutate(cluster = if_else(cluster == '1', 'Cluster 1', cluster),
+         cluster = factor(cluster, levels = c("Cluster 1", 2:6)),
+         `Household income` = as.character(scales::comma(`Household income`)),
+          `Household income` = factor(`Household income`, levels = income_levels)) %>%
+  count(`Household income`, cluster) %>% 
+  group_by(cluster) %>% 
+  mutate(proportion = n / sum(n)) %>% 
+  na.omit() %>% 
+  ggplot(aes(x = `Household income`, y = proportion)) +
+  geom_col(aes(fill = cluster), position = 'dodge', color = 'white') +
+  geom_errorbar(data = hline_data, aes(ymin = proportion , ymax = proportion), color = 'grey50') +
+  scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(cluster~., scales = 'free') +
+  labs(title = 'Household income',
+       subtitle = 'Horizontal lines represent the population',
+       x = 'Household income',
+       y = NULL) +
+  theme(legend.position = 'none',
+        axis.text.x = element_text(angle = 40, hjust = 1),
+        strip.background = element_blank(),
+        strip.text.y = element_blank())
+```
+
+```{r fig.height=6, fig.width=7}
+gridExtra::grid.arrange(Age_plot, income_plot, ncol = 2)
+```
+
+```{r}
+# population %>%
+#   select(Age, `Household income`, cluster) %>%
+#   pivot_longer(cols = c('Age', 'Household income')) %>%
+#   ggplot(aes(x = value, fill = cluster)) +
+#   geom_density(data = population %>% select(Age, `Household income`) %>% pivot_longer(cols = everything()),
+#                aes(x = value), alpha = 0.3, fill = 'grey40', color = 'grey50') +
+#   geom_density(alpha = 0.1, color = 'grey50') +
+#   scale_fill_discrete(name = NULL) +
+#   # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+#   # scale_x_log10(labels = scales::comma) +
+#   scale_y_continuous(labels = NULL) +
+#   facet_wrap(~name, scales = 'free', nrow = 2) +
+#   labs(#title = ,
+#        x = NULL,
+#        y = NULL)
+```
+
+```{r}
+# descrete
+recoded_pop <- population %>% 
+  select(Sex, Married, Education, has_child, cluster) %>% 
+  mutate(Sex = recode(Sex, '1' = 'Male', '2' = 'Female'),
+         Married = recode(Married, '0' = 'Not married', '1' = 'Married'),
+         Child = recode(has_child, '0' = 'No children', '1' = 'Children in household'),
+         cluster = if_else(cluster == '1', 'Cluster\n1', cluster),
+         cluster = factor(cluster, levels = c("Cluster\n1", 2:6))) %>% 
+  select(-has_child)
+```
+
+```{r fig.height=3, fig.width=7}
+# bar plot by sex
+sex_plot <- recoded_pop %>% 
+  select(Sex, cluster) %>%
+  group_by(cluster, Sex) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Sex, fill = Sex)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Sex'] %>% count(Sex) %>% mutate(Proportion = n / sum(n)) %>% filter(Sex == 'Male'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_brewer(palette = 'Greens', name = NULL) +
+  annotate(geom = 'text', x = 5, y = 0.53, 
+           label = 'Population mean', color = 'grey30', fontface = 'bold', size = 3) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = 'Clusters split by sex', 
+       x = NULL,
+       y = 'Proportion of cluster population') +
+  theme(legend.position = 'bottom')
+```
+
+```{r fig.height=3, fig.width=7}
+# bar plot by child status
+child_plot <- recoded_pop %>% 
+  select(Child, cluster) %>%
+  group_by(cluster, Child) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Child, fill = Child)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Child'] %>% count(Child) %>% mutate(Proportion = n / sum(n)) %>% filter(Child == 'No children'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_brewer(palette = 'Purples', name = NULL) +
+  # annotate(geom = 'text', x = 5, y = 0.64, 
+  #          label = 'Population mean', color = 'grey30', fontface = 'bold') +
+  scale_y_continuous(labels = NULL) +
+  labs(title = '...by children in household', 
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = 'bottom')
+```
+
+```{r fig.height=3, fig.width=7}
+# bar plot by marital status
+marital_plot <- recoded_pop %>% 
+  select(Married, cluster) %>%
+  group_by(cluster, Married) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Married, fill = Married)) +
+  geom_col(position = 'stack', color = 'white') +
+  geom_hline(data = recoded_pop[, 'Married'] %>% count(Married) %>% mutate(Proportion = n / sum(n)) %>% filter(Married == 'Not married'),
+             aes(yintercept = Proportion),
+             color = 'grey50') +
+  scale_fill_brewer(palette = 'Reds', name = NULL) +
+  # annotate(geom = 'text', x = 5, y = 0.55, 
+  #          label = 'Population mean', color = 'grey30', fontface = 'bold', size = 3) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = '...by marital status', 
+       x = NULL,
+       y = '') +
+  theme(legend.position = 'bottom')
+```
+
+```{r fig.height=3, fig.width=7}
+# bar plot by education status
+edu_status <- recoded_pop %>% 
+  na.omit() %>% 
+  select(Education, cluster) %>%
+  group_by(cluster, Education) %>% 
+  summarize(Proportion = n()) %>% 
+  group_by(cluster) %>% 
+  mutate(Proportion = Proportion / sum(Proportion)) %>% 
+  ungroup()
+
+edu_plot <- recoded_pop %>% 
+  na.omit() %>% 
+  select(Education) %>%
+  count(Education) %>% 
+  mutate(Proportion = n / sum(n),
+         cluster = 'Population') %>% 
+  ungroup() %>% 
+  bind_rows(edu_status) %>% 
+  mutate(Education = factor(Education, levels = rev(c('Did not graduate from HS', 'HS', 'Some college', 'Bachelors', 'Masters', 'Doctoral'))),
+         cluster = factor(cluster, levels = c("Cluster\n1", 2:6, 'Population'))) %>% 
+  ggplot(aes(x = cluster, y = Proportion, group = Education, fill = Education)) +
+  geom_col(position = 'stack', color = 'white') +
+  scale_fill_brewer(palette = 'Blues', name = NULL) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = '...by education', 
+       x = NULL,
+       y = NULL) +
+  theme(legend.position = 'bottom',
+        legend.text = element_text(size = 7),
+        legend.key.size = unit(0.4, "cm")) +
+  guides(fill = guide_legend(nrow = 2))
+```
+
+```{r fig.height=6, fig.width=7}
+gridExtra::grid.arrange(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
+```
+
+
+# Conclusion
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+

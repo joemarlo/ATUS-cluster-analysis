@@ -448,7 +448,7 @@ ggplot(ggd1$segments) +
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend, color = col),
                linetype = ggd1$segments$linetype, alpha = 0.6) +
   geom_text(data = text_labels, aes(label = label, x = x, y = y)) +
-  coord_cartesian(ylim = c(0, 26000), clip = 'off') +
+  coord_cartesian(ylim = c(0, 45000), clip = 'off') +
   scale_x_continuous(labels = NULL) +
   scale_y_continuous(labels = scales::comma) +
   labs(title = 'Ward (D2) linkage with manual cluster labels',
@@ -504,10 +504,10 @@ atus_resampled %>%
   bind_cols(group = as.factor(groupings)) %>%
   pivot_longer(cols = -group) %>% 
   ggplot(aes(x = value, group = group, fill = group)) +
-  geom_density(alpha = 0.3) +
+  geom_density(color = 'grey50', alpha = 0.3) +
   scale_fill_brewer(palette = 'Accent') +
   scale_x_log10() +
-  facet_wrap(~name, nrow = 3, scales = 'free') +
+  facet_wrap(~name, nrow = 5, scales = 'free') +
   labs(title = 'Activities split by cluster', 
        x = NULL,
        y = NULL)
@@ -532,6 +532,28 @@ atus_resampled %>%
   facet_wrap(~name, nrow = 3, scales = 'free') +
   labs(title = 'Activities split by cluster', 
        x = NULL,
+       y = NULL)
+```
+
+```{r}
+# activity densities lined up by cluster
+atus_resampled %>% 
+  as_tibble() %>% 
+  bind_cols(group = as.character(groupings)) %>%
+  mutate(group = if_else(group == '1', 'Cluster 1', group),
+         group = factor(group, levels = c("Cluster 1", 2:6))) %>% 
+  pivot_longer(cols = -group) %>% 
+  # move 'other' to end of list
+  mutate(name = factor(name, levels = c(colnames(atus_resampled)[-7], 'Other'))) %>% 
+  ggplot(aes(x = value, group = name, fill = name)) +
+  geom_density(alpha = 0.3, color = 'grey50', size = 0.5) +
+  # scale_fill_discrete(name = NULL) +
+  viridis::scale_fill_viridis(discrete = TRUE, name = NULL) +
+  scale_x_log10(limits = c(10, 1200)) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(group~., switch = 'y') +
+  labs(title = 'Weekend activities split by cluster',
+       x = 'Minutes per day',
        y = NULL)
 ```
 
@@ -621,6 +643,150 @@ demographics %>%
        y = NULL)
 ```
 
+```{r}
+# demographics densities lined up by cluster
+population <- demographics %>% 
+  right_join(bind_cols(IDs_kept)) %>%
+  mutate(cluster = as.character(groupings[match(ID, pull(IDs_kept))])) %>% 
+  select(-survey_weight) %>% 
+  rename(Age = age, Sex = sex, 'Household income' = HH_income, Married = married, 
+         Race = race, Education = education)
+
+# continuous
+population %>% 
+  select(Age, `Household income`, cluster) %>% 
+  pivot_longer(cols = c('Age', 'Household income')) %>%
+  ggplot(aes(x = value, fill = cluster)) +
+  geom_density(data = population %>% select(Age, `Household income`) %>% pivot_longer(cols = everything()),
+               aes(x = value), alpha = 0.3, fill = 'grey40', color = 'white') +
+  geom_density(alpha = 0.3, color = 'white') +
+  scale_fill_discrete(name = NULL) +
+  # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  scale_x_log10(labels = scales::comma) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(cluster~name, scales = 'free') +
+  labs(#title = ,
+       x = NULL,
+       y = NULL)
+
+# age only
+population %>% 
+  select(Age, cluster) %>% 
+  pivot_longer(cols = 'Age') %>%
+  ggplot(aes(x = value, fill = cluster)) +
+  geom_density(data = population %>% select(Age),
+               aes(x = Age), alpha = 0.3, fill = 'grey40', color = 'white') +
+  geom_density(alpha = 0.3, color = 'white') +
+  scale_fill_discrete(name = NULL) +
+  # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  # scale_x_log10(labels = scales::comma) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(cluster~., scales = 'free') +
+  labs(title = "Age",
+       x = NULL,
+       y = NULL)
+
+# income only
+population %>% 
+  select(`Household income`, cluster) %>% 
+  pivot_longer(cols = 'Household income') %>%
+  ggplot(aes(x = value, fill = cluster)) +
+  geom_density(data = population %>% select(`Household income`),
+               aes(x = `Household income`), alpha = 0.3, fill = 'grey40', color = 'white') +
+  geom_density(alpha = 0.3, color = 'white') +
+  scale_fill_discrete(name = NULL) +
+  # scale_fill_brewer(palette = 'Spectral', name = NULL) +
+  # scale_x_log10(labels = scales::comma) +
+  scale_y_continuous(labels = NULL) +
+  facet_grid(cluster~., scales = 'free') +
+  labs(title = "Household income",
+       x = NULL,
+       y = NULL)
+# or barplot
+# population %>% 
+#   group_by(cluster, `Household income`) %>% 
+#   summarize(n = n()) %>% 
+#   ggplot(aes(x = `Household income`, y = n)) +
+#   geom_col() +
+#   geom_col(data = population %>% group_by(`Household income`) %>% summarize(n = n()), 
+#            fill = 'red', position = 'dodge') +
+#   facet_grid(cluster~., scales = 'free') +
+#   labs(title = "Household income",
+#        x = NULL,
+#        y = NULL)
+
+# discrete
+population %>%  
+  select(-c('Age', 'Household income', 'ID')) %>% 
+  mutate_all(as.character) %>% 
+  pivot_longer(cols = everything()) %>% 
+  ggplot(aes(x = value)) +
+  geom_histogram() +
+  facet_grid(cluster~name, scales = 'free_x')
+  group_by(name, value) %>% 
+  summarize(mean_proportion = n() / sample_size)
+
+demographics %>% 
+  right_join(bind_cols(IDs_kept, cluster = as.factor(groupings))) %>% 
+  select(-c('ID', 'survey_weight')) %>% 
+  mutate_all(as.character) %>% 
+  pivot_longer(cols = -cluster) %>% 
+  group_by(name, cluster) %>% 
+  mutate(cluster_n = n()) %>% 
+  group_by(name, value, cluster) %>% 
+  summarize(proportion = n() / first(cluster_n)) %>% 
+  left_join(mean_proportions) %>% 
+  mutate(relative_proportion = proportion - mean_proportion) %>% 
+  ungroup() %>% 
+  # refactor so order is correct
+  mutate(value = factor(value,
+                        levels = c(
+                          as.character(15:85),
+                          as.character(0:2),
+                          c(
+                            "5000",
+                            "7500",
+                            "10000",
+                            "12500",
+                            "15000",
+                            "20000",
+                            "25000",
+                            "30000",
+                            "35000",
+                            "40000",
+                            "50000",
+                            "60000",
+                            "75000",
+                            "1e+05",
+                            "150000"
+                          ),
+                          c("asian", "white", "black", "other"),
+                          c(
+                            "Did not graduate from HS",
+                            "HS",
+                            "Some college",
+                            "Bachelors",
+                            "Masters",
+                            "Doctoral"
+                          )
+                        ))) %>% 
+  ggplot(aes(x = value, y = relative_proportion, fill = relative_proportion)) +
+  geom_col() +
+  scale_fill_gradient2(low = 'red', mid = 'grey20', high = 'green') +
+  # facet_wrap(cluster ~ name, scales = 'free', ncol = 8) +
+  facet_grid(cluster ~ name, scales = 'free_x') +
+  labs(title = 'Demographics split by cluster',
+       subtitle = 'Relative proportion of values versus population', 
+       x = NULL,
+       y = NULL) +
+  theme(axis.text.x = element_text(angle = 65, hjust = 1),
+        axis.text = element_text(size = 8))
+
+
+
+```
+
+
 ```{r include=FALSE}
 # memory management -------------------------------------------------------
 rm(dist_sc, groupings, sample_size)
@@ -688,8 +854,14 @@ Qs:
 - how to map clusters back to dendrogram?
 
 - look at data dictionary
+  - age_youngest = TRYHHCHILD:  Age of youngest household child < 18
+  - has_child = n_child = TRCHILDNUM: Number of household children < 18
+  - married = PEMARITL: MARITAL STATUS, married, spouse present; i believe this is individual-based after looking at the ATUSCPS dataset
 - see if there is any outstanding research on these archetypes
 - figure out how to make side-by-side publishable plots for each cluster
+
+
+
 
 ### Optimizing hierarchical cluster sizes
 
