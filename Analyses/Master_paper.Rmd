@@ -1,7 +1,6 @@
 ---
 title: "Proposed structure"
-author: "Joe Marlo"
-date: "5/27/2020"
+date:  "`r format(Sys.time(), '%B %d %Y')`"
 output: pdf_document
 toc: true
 editor_options: 
@@ -57,44 +56,9 @@ demographics <- demographics %>%
 
 # Introduction and research question
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+What are your plans for the weekend? While it is easy to imagine that American’s spend their weekends differently, this is a challenging question to empirically validate. 
 
-
-## Key findings
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-
-## Clustering process
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-
-- clustering on the data
-- why clustering
-
-
-## The data
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-key points
- - weekend only
- - going to examine a weighted samplen of 25k
-
-```{r}
-# description of the data
-atus_long %>% 
-  group_by(description) %>% 
-  summarize(Mean = mean(value),
-            part_rate = mean(value > 0)) %>% 
-  arrange(desc(Mean)) %>% 
-  mutate(Type = 'Continuous') %>% 
-  janitor::adorn_totals() %>% 
-  mutate(Mean = round(Mean, 0),
-         part_rate = round(part_rate, 2),
-         part_rate = ifelse(part_rate == 6.34, '-', part_rate)) %>% 
-  select(Activity = description, Type, Mean, 'Participation rate' = part_rate) %>% 
-  pander::pander(justify = c("left", "left", 'right', 'right'))
-```
+What are your plans for the weekend? Describing the average American’s weekend plans in an easy exercise in descriptive statistics. On average, the typical American sleeps 10 hours sleeping, 6 hours socializing and relaxing, 2 hours on household activities and 1 hour eating and drinking. This picture of how the average weekend is spent is shown in the plot below. 
 
 ```{r}
 # density plot of activities
@@ -117,7 +81,7 @@ density_plot_data %>%
   mutate(description = factor(description,
                               levels = label_order$description)) %>% 
   ggplot(aes(x = value, group = description, fill = description)) +
-  geom_density(color = 'grey50', alpha = 0.4) +
+  geom_density(color = 'grey50', alpha = 0.4, adjust = 2) +
   scale_fill_discrete(name = 'Mean minutes: Activity') +
   scale_x_log10() +
   labs(title = 'Weekend Time use activities',
@@ -129,44 +93,31 @@ density_plot_data %>%
         legend.background = element_rect(color = 'grey90'),
         legend.text = element_text(size = 7),
         legend.key.size = unit(0.4, "cm"))
-        # legend.title = element_blank())
 ```
 
 
-## Demographics of the respondents
+While this plot speaks to the population average, it provides little relevant information about how actual individuals spend their time. Moreover, averages and traditional supervised methods are not designed to identify patterns of how different groupings of Americans fill their weekends. 
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+The idea that different people spend their weekends in different ways is unsurprising but it is hard to quantify.  Unsupervised machine learning, also referred to as cluster analysis, or clustering, offers a solution to these types of unstructured problems. The method applies distance metrics and linear algebra to recognize patterns and can quantify if different groups of Amerians spend their weekends in different ways. 
 
-drop race
+Data on time use was obtained from the American Time Use Survey (ATUS), which measures how Americans spend their time doing various activities such as work, household activities, volunteering, leisure, and socializing. The ATUS is the most comprehensive measure of time use and obtains a representative sample of how Americans spend their day. 
 
 
-# Clustering
+# Key findings
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+key points on data not yet mentioned
+ - weekend only
+ - going to examine a weighted samplen of 25k
 
-Process
-- hierarchial
-- discuss but don't show: kmeans
-- discuss but don't show: c(g) and silhouette metrics
-- no need for transformations / scaling
 
-```{r fig.height=4, fig.width=7}
-# correlation between categories
-# atus_long %>% 
-#   pivot_wider(values_from = value, names_from = description) %>% 
-#   select(-ID) %>% 
-#   as.matrix() %>% 
-#   cor() %>% 
-#   reshape::melt() %>% 
-#   ggplot(aes(x = reorder(X1, value), y = reorder(X2, value), fill = value)) +
-#   geom_tile() +
-#   scale_fill_gradient2() +
-#   labs(title = "Correlations between activities",
-#        x = NULL,
-#        y = NULL) +
-#   theme(axis.text.x = element_text(angle = 40, hjust = 1),
-#         legend.title = element_blank())
-```
+# Analysis
+
+## Distance
+
+Clustering algorithms rely on calculating measures of distance between data points and variables. There are several established metrics such as the euclidean, manhattan, Jacquard and many others. As a starting point, it is useful to examine the distances between variables to understand if an underlying relationship exists. 
+
+The distance matrix confirms some simple assumptions. For example, those who work more on the weekend spend less time sleeping. Similarly, those who work more on weekends have less social and leisure time. While these simple comparisons confirm the assumption that patterns exist they do not reveal any underlying complex structure. 
 
 ```{r fig.height=4, fig.width=7}
 # distance between categories
@@ -181,13 +132,12 @@ atus_long %>%
   ggplot(aes(x = reorder(X1, -value), y = reorder(X2, -value), fill = value)) +
   geom_tile() +
   scale_fill_gradient2(labels = scales::comma) +
-  labs(title = "Distance between activities",
+  labs(title = "Euclidean distance between activities",
        x = NULL,
        y = NULL) +
-  theme(axis.text.x = element_text(angle = 40, hjust = 1),
+  theme(axis.text.x = element_text(angle = 30, hjust = 1),
         legend.title = element_blank())
 ```
-
 
 ```{r}
 # pivot wider and turn into matrix
@@ -209,12 +159,9 @@ IDs_kept <- atus_long %>%
 atus_resampled <- atus_wide[rows_to_keep,]
 ```
 
-```{r}
-# run PCA
-atus_pca <- prcomp(atus_resampled)
-summary(atus_pca)$importance[, 1:6] %>% 
-    pander::pander(justify = c('left', rep('right', 6)), round = 2)
-```
+## Clustering
+
+Hierarchical clustering extends the use of distance metrics to understand the similarities and differences between data points (i.e. the people), rather than the distance between variables. A powerful way to visualize this distance is by plotting a dendrogram of the clusters. Hierarchical clustering groups observations by iteratively reducing the number of clusters by combining data points. Dendrograms are a way of visualizing these relationships and identifying existing groupings. In this context, branches that are closer to one another represent people with more similar weekends.
 
 ```{r}
 # distance matrix for features
@@ -222,24 +169,48 @@ dist_sc <- dist(atus_resampled, method = 'euclidean')
 
 # ward (D2) linkage hier clustering
 hcl_ward <- hclust(d = dist_sc, method = 'ward.D2')
-# dend <- as.dendrogram(hcl_ward)
-hcl_k <- 6
-# dend_col <- color_branches(dend, k = hcl_k)
-# plot(dend_col, main = paste0('Ward (D2) Linkage: K = ', hcl_k))
 ```
 
-
-## Discuss dendrogram
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
 ```{r}
-# trimmed, colored branches tree
-dend <- as.dendrogram(hcl_ward) %>% set("branches_k_color", k = hcl_k) %>% set("labels_colors")
+# convert cluster to dendrogram
+dend <- as.dendrogram(hcl_ward)
 dend <- cut(dend, h = 300)$upper # cut off bottom of dendogram for computation performance
 ggd1 <- as.ggdend(dend)
 ```
 
+```{r fig.height=3.7, fig.width=7}
+# plot the dendrogram
+ggplot(ggd1$segments) + 
+  geom_segment(aes(x = x, y = y, xend = xend, yend = yend), color = 'grey50', lwd = 0.6, alpha = 0.7) +
+  coord_cartesian(ylim = c(100, 45000), clip = 'off') +
+  scale_x_continuous(labels = NULL) +
+  scale_y_continuous(labels = NULL) +
+  labs(title = 'Hierarchical clustering',
+       subtitle= 'Ward (D2) linkage',
+       x = NULL,
+       y = NULL) +
+  theme(axis.ticks = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        legend.position = 'none',
+        plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
+```
+
+
+## Choosing number of clusters
+
+Identifying the final number of clusters is a nuanced and subjective exercise. That being said, mathematical and quantitative guidelines exist to aid this decision. To determine the number of groups the Calinski-Harabasz index, Silhouette width and Gap-statistic were consulted. 
+
+These metrics, combined with the visualization provided by the dendrogram suggest that American’s weekend activities can be divided into 6 distinct clusters. Of the 6 final clusters, 5 represent distinct groupings while the 6th appears to be more general. 
+
+
+```{r}
+# trimmed, colored branches tree
+hcl_k <- 6
+dend <- as.dendrogram(hcl_ward) %>% set("branches_k_color", k = hcl_k) %>% set("labels_colors")
+dend <- cut(dend, h = 300)$upper # cut off bottom of dendogram for computation performance
+ggd1 <- as.ggdend(dend)
+```
 
 ```{r}
 # get labels from model
@@ -279,8 +250,6 @@ label_match <- label_match %>%
 ggd1$segments$col <- label_match$brew_palette[match(ggd1$segments$col, label_match$col)]
 ```
 
-
-
 ```{r fig.height=4, fig.width=7}
 # set dashed line for non-cluster segements
 ggd1$segments$linetype <- 'solid'
@@ -303,13 +272,13 @@ text_labels <- tribble(
 # plot the dendrogram
 ggplot(ggd1$segments) + 
   geom_segment(aes(x = x, y = y, xend = xend, yend = yend), color = ggd1$segments$col,
-               linetype = ggd1$segments$linetype, lwd = 0.6) +
+               linetype = ggd1$segments$linetype, lwd = 0.6, alpha = 0.7) +
   geom_text(data = text_labels, aes(label = label, x = x, y = y)) +
   coord_cartesian(ylim = c(100, 45000), clip = 'off') +
   scale_x_continuous(labels = NULL) +
   scale_y_continuous(labels = NULL) +
-  labs(title = 'Ward (D2) linkage',
-       subtitle = '6 cluster solution',
+  labs(title = 'Hierarchical clustering',
+       subtitle = 'Ward (D2) linkage: 6 cluster solution',
        x = NULL,
        y = NULL) +
   theme(axis.ticks = element_blank(),
@@ -318,6 +287,11 @@ ggplot(ggd1$segments) +
         legend.position = 'none',
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
 ```
+
+Hierarchical clustering is only one of many clustering methods. We considered the popular K-means algorithm as well as model based clustering. A hierarchical approach offered the best fit to this particular data set. Within the time use survey, many respondents indicate 0 minutes spent on several activities. The K-means algorithm assumes all variables have an equal variance and does not handle zero inflated variables well. These assumptions do not fit the specifics of time use. Simmialty, model based clustering has more rigid assumptions that variables come from a multivariate normal data generating process. Hierarchical clustering avoids these assumptions and is why it is a good fit for this particular clustering problem. 
+
+Frequently, variables are scaled prior to cluster analysis. In this particular context, variables are already recorded on the same scale so no transformations were included and variables were left in their original non-transformed format. 
+
 
 # Breaking down the clusters
 
@@ -343,8 +317,8 @@ atus_resampled %>%
   mutate(name = factor(name, levels = c(colnames(atus_resampled)[-7], 'Other'))) %>% 
   ggplot(aes(x = value, group = name, fill = name)) +
   geom_density(alpha = 0.3, color = 'grey50', size = 0.5) +
-  # scale_fill_discrete(name = NULL) +
-  viridis::scale_fill_viridis(discrete = TRUE, name = NULL) +
+  scale_fill_discrete(name = NULL) +
+  # viridis::scale_fill_viridis(discrete = TRUE, name = NULL) +
   scale_x_log10(limits = c(10, 1200)) +
   scale_y_continuous(labels = NULL) +
   facet_grid(group~., switch = 'y') +
