@@ -2,8 +2,10 @@
 title: "How does your weekend stack up?"
 subtitle: "A cluster analysis of how Americans' spend their weekends"
 date:  "`r format(Sys.time(), '%B %d %Y')`"
-output: pdf_document
-toc: true
+output:
+  pdf_document:
+    toc: yes
+    toc_depth: 2
 editor_options: 
   chunk_output_type: console
 ---
@@ -16,18 +18,6 @@ knitr::opts_knit$set(root.dir = normalizePath(".."))
 ```
 
 ```{r include=FALSE}
-get_cluster_polygons <- function(df, x, y, cluster){
-  # function returns polygons to draw around plot
-  # usage: ggplot() + geom_polygon(data = hulls) +
-  # x, y, and cluster must be strings
-  
-  find_hull <- function(df) df[chull(df[[x]], df[[y]]), ]
-  hulls <- plyr::ddply(df, cluster, find_hull)
-  
-  return(hulls)
-}
-
-
 theme_custom <- function() {
   theme_minimal() +
     theme(
@@ -122,6 +112,8 @@ Clustering algorithms rely on calculating measures of distance between data poin
 
 The distance matrix confirms some simple assumptions. For example, those who work more on the weekend spend less time sleeping. Similarly, those who work more on weekends have less social and leisure time. While these simple comparisons confirm the assumption that patterns exist they do not reveal any underlying complex structure. 
 
+\  
+
 ```{r fig.height=4, fig.width=7}
 # distance between categories
 atus_long %>% 
@@ -172,6 +164,8 @@ dist_sc <- dist(atus_resampled, method = 'euclidean')
 
 # ward (D2) linkage hier clustering
 hcl_ward <- hclust(d = dist_sc, method = 'ward.D2')
+hcl_single <- hclust(d = dist_sc, method = 'single')
+hcl_centroid <- hclust(d = dist_sc, method = 'centroid')
 ```
 
 ```{r}
@@ -198,7 +192,6 @@ ggplot(ggd1$segments) +
         legend.position = 'none',
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
 ```
-
 
 ## Choosing number of clusters
 
@@ -291,22 +284,16 @@ ggplot(ggd1$segments) +
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
 ```
 
-Hierarchical clustering is only one of many clustering methods. We considered the popular K-means algorithm as well as model based clustering. A hierarchical approach offered the best fit to this particular data set. Within the time use survey, many respondents indicate 0 minutes spent on several activities. The K-means algorithm assumes all variables have an equal variance and does not handle zero inflated variables well. These assumptions do not fit the specifics of time use. Simmialty, model based clustering has more rigid assumptions that variables come from a multivariate normal data generating process. Hierarchical clustering avoids these assumptions and is why it is a good fit for this particular clustering problem. 
+Hierarchical clustering is only one of many clustering methods. We considered the popular K-means algorithm as well as model based clustering. A hierarchical approach offered the best fit to this particular data set. Within the Time Use Survey, many respondents indicate 0 minutes spent on several activities. The K-means algorithm assumes all variables have an equal variance and does not handle zero inflated variables well. These assumptions do not fit the specifics of time use. Similarly , model based clustering has more rigid assumptions that variables come from a multivariate normal data generating process. Hierarchical clustering avoids these assumptions and is a good fit for this particular clustering problem. 
 
-Frequently, variables are scaled prior to cluster analysis. In this particular context, variables are already recorded on the same scale so no transformations were included and variables were left in their original non-transformed format. 
-
+Frequently, variables are scaled prior to cluster analysis. In this particular context, variables are already recorded on the same scale so no centering or transformations were included and variables were left in their original non-transformed format. 
 
 # Breaking down the clusters
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+## Activities
+After assigning each person to a cluster, different groupings of weekend activities begin to emerge. Shown below, while all 6 groupings spend approximately equal time sleeping, there are distinct differences in the amount of time spent working, time spent on household activities, differences in socialization and differing amounts of time spent caring for other members of ones’ household. In the plot, each row represents a distinct cluster and colors denote different activities. 
 
-- Cluster 1:   
-- Cluster 2  
-- Cluster 3  
-- Cluster 4  
-- Cluster 5  
-- Cluster 6: Catch all 'Other'  
-
+\  
 
 ```{r}
 # activity densities lined up by cluster
@@ -316,7 +303,6 @@ atus_resampled %>%
   mutate(group = if_else(group == '1', 'Cluster 1', group),
          group = factor(group, levels = c("Cluster 1", 2:6))) %>% 
   pivot_longer(cols = -group) %>% 
-  # move 'other' to end of list
   mutate(name = factor(name, levels = label_order$description)) %>% 
   ggplot(aes(x = value, group = name, fill = name)) +
   geom_density(alpha = 0.4, color = 'grey50', size = 0.5) +
@@ -329,12 +315,9 @@ atus_resampled %>%
        y = NULL)
 ```
 
+To get a better understanding of each cluster, the plot below focuses on the most distinct differences in time spent between each cluster. Differences in these five primary activities account for the majority  of differences in how American’s spend their weekends. These results show that the algorithm is able to identity those who spend their weekends predominantly working (Cluster 1), socializing (Clusters 2 & 3), on household activities (Cluster 4) and on caring for other members of the household (Cluster 5)
 
-## Zoom in on specific activities
-
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Discuss how this cluster split this activities the most
+\  
 
 ```{r}
 # activites to show
@@ -342,7 +325,6 @@ activities_show <- c(
   'Caring For Household Member',
   'Household Activities',
   'Socializing, Relaxing, and Leisure',
-  'Volunteer',
   'Work')
 
 # densities of activities by cluster
@@ -356,20 +338,26 @@ atus_resampled %>%
   scale_fill_brewer(palette = 'Spectral', name = 'Cluster') +
   scale_y_continuous(labels = NULL) +
   scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
-  facet_wrap(~name, nrow = 5, scales = 'free_y') +
+  facet_wrap(~name, nrow = 2, scales = 'free_y') +
   labs(title = 'Most distinct activities after accounting for cluster membership', 
        x = 'Minutes per day',
        y = NULL)
 ```
 
+## Who makes up each cluster? 
 
-## Discuss demographics
+One of the values of cluster analysis is the ability to identify who makes up segments of the broader population. By linking cluster assignment to data from the Current Population Survey (CPS) a better picture of differences between clusters can be drawn. 
 
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+\  
 
-discuss how some of the cluster difference are associated with different demographics
+> **Why explore demographic data?**  
+> Linking demographic data to cluster assignment has many different uses that range from marketing to academic research. For example, a long line of research has shown that women spend more time taking care of household members compared to their male counterparts. Investigating demographic associations with cluster assignment could be used as a tool to validate that women disproportionately spend more hours on unpaid work. In a different context, marketing firms could improve targeted advertisements by identifying segments that spend their weekends on different types of activities.
 
-Age, income, married, child, educate, gender
+\  
+
+Comparing age, income, marital status, sex, children and eduational atainment between clusters revealed several patterns. While each cluster is made up of all demographics, demographics within each of the first five clusters differ from population averages.  The visual below shows how age and income are not evenly dispersed between clusters. Some clusters tend to be younger, others are largely middle aged and others skew older. Similar differences exist for different levels of household income. 
+
+\  
 
 ```{r}
 population <- demographics %>% 
@@ -378,28 +366,6 @@ population <- demographics %>%
   select(-survey_weight) %>% 
   rename(Age = age, Sex = sex, 'Household income' = HH_income, Married = married, 
          Race = race, Education = education)
-```
-
-```{r fig.height=5, fig.width=7}
-# continuous
-# population %>% 
-#   select(Age, `Household income`, cluster) %>%
-#   mutate(cluster = if_else(cluster == '1', 'Cluster 1', cluster),
-#          cluster = factor(cluster, levels = c("Cluster 1", 2:6))) %>% 
-#   pivot_longer(cols = c('Age', 'Household income')) %>%
-#   ggplot(aes(x = value, fill = cluster)) +
-#   geom_density(data = population %>% select(Age, `Household income`) %>% pivot_longer(cols = everything()),
-#                aes(x = value), alpha = 0.3, fill = 'grey40', color = 'grey50') +
-#   geom_density(alpha = 0.3, color = 'grey50') +
-#   scale_fill_discrete(name = NULL) +
-#   # scale_fill_brewer(palette = 'Spectral', name = NULL) +
-#   scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
-#   scale_y_continuous(labels = NULL) +
-#   facet_grid(cluster~name, scales = 'free') +
-#   labs(title = 'Change this plot?',
-#        x = NULL,
-#        y = NULL) +
-#   theme(legend.position = 'none')
 ```
 
 ```{r}
@@ -412,10 +378,7 @@ Age_plot <- population %>%
   geom_density(data = population %>% select(Age) %>% pivot_longer(cols = everything()),
                aes(x = value), alpha = 0.7, fill = 'grey40', color = 'grey50') +
   geom_density(alpha = 0.7, color = 'grey50') +
-  # scale_fill_discrete(name = NULL) +
   scale_fill_brewer(palette = 'Spectral', name = NULL) +
-  # scale_fill_brewer(palette = 'Spectral', name = NULL) +
-  # scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
   scale_y_continuous(labels = NULL) +
   facet_grid(cluster~name, scales = 'fixed',  switch = 'y') +
   labs(title = 'Clusters by distribution of age',
@@ -466,30 +429,15 @@ income_plot <- population %>%
         strip.text.y = element_blank())
 ```
 
-```{r fig.height=6, fig.width=7}
+```{r fig.height=5, fig.width=7}
 gridExtra::grid.arrange(Age_plot, income_plot, ncol = 2)
 ```
 
-```{r}
-# population %>%
-#   select(Age, `Household income`, cluster) %>%
-#   pivot_longer(cols = c('Age', 'Household income')) %>%
-#   ggplot(aes(x = value, fill = cluster)) +
-#   geom_density(data = population %>% select(Age, `Household income`) %>% pivot_longer(cols = everything()),
-#                aes(x = value), alpha = 0.3, fill = 'grey40', color = 'grey50') +
-#   geom_density(alpha = 0.1, color = 'grey50') +
-#   scale_fill_discrete(name = NULL) +
-#   # scale_fill_brewer(palette = 'Spectral', name = NULL) +
-#   # scale_x_log10(labels = scales::comma) +
-#   scale_y_continuous(labels = NULL) +
-#   facet_wrap(~name, scales = 'free', nrow = 2) +
-#   labs(#title = ,
-#        x = NULL,
-#        y = NULL)
-```
+
+Similarly, we see uneven dispersions in sex, marital status, children, and education levels. Some clusters skew towards female, others contain more married individuals, and others more education. Notably, cluster 5 contains almost exclusively individuals that have children in the household.
 
 ```{r}
-# descrete
+# discrete
 recoded_pop <- population %>% 
   select(Sex, Married, Education, has_child, cluster) %>% 
   mutate(Sex = recode(Sex, '1' = 'Male', '2' = 'Female'),
@@ -498,116 +446,6 @@ recoded_pop <- population %>%
          cluster = if_else(cluster == '1', 'Cluster\n1', cluster),
          cluster = factor(cluster, levels = c("Cluster\n1", 2:6))) %>% 
   select(-has_child)
-```
-
-```{r fig.height=3, fig.width=7}
-# bar plot by sex
-# sex_plot <- recoded_pop %>% 
-#   select(Sex, cluster) %>%
-#   group_by(cluster, Sex) %>% 
-#   summarize(Proportion = n()) %>% 
-#   group_by(cluster) %>% 
-#   mutate(Proportion = Proportion / sum(Proportion)) %>% 
-#   ungroup() %>% 
-#   ggplot(aes(x = cluster, y = Proportion, group = Sex, fill = Sex)) +
-#   geom_col(position = 'stack', color = 'white') +
-#   geom_hline(data = recoded_pop[, 'Sex'] %>% count(Sex) %>% mutate(Proportion = n / sum(n)) %>% filter(Sex == 'Male'),
-#              aes(yintercept = Proportion),
-#              color = 'grey50') +
-#   scale_fill_brewer(palette = 'Greens', name = NULL) +
-#   annotate(geom = 'text', x = 5, y = 0.53, 
-#            label = 'Population mean', color = 'grey30', fontface = 'bold', size = 3) +
-#   scale_y_continuous(labels = NULL) +
-#   labs(title = 'Clusters split by sex', 
-#        x = NULL,
-#        y = 'Proportion of cluster population') +
-#   theme(legend.position = 'bottom')
-```
-
-```{r fig.height=3, fig.width=7}
-# bar plot by child status
-# child_plot <- recoded_pop %>% 
-#   select(Child, cluster) %>%
-#   group_by(cluster, Child) %>% 
-#   summarize(Proportion = n()) %>% 
-#   group_by(cluster) %>% 
-#   mutate(Proportion = Proportion / sum(Proportion)) %>% 
-#   ungroup() %>% 
-#   ggplot(aes(x = cluster, y = Proportion, group = Child, fill = Child)) +
-#   geom_col(position = 'stack', color = 'white') +
-#   geom_hline(data = recoded_pop[, 'Child'] %>% count(Child) %>% mutate(Proportion = n / sum(n)) %>% filter(Child == 'No children'),
-#              aes(yintercept = Proportion),
-#              color = 'grey50') +
-#   scale_fill_brewer(palette = 'Purples', name = NULL) +
-#   # annotate(geom = 'text', x = 5, y = 0.64, 
-#   #          label = 'Population mean', color = 'grey30', fontface = 'bold') +
-#   scale_y_continuous(labels = NULL) +
-#   labs(title = '...by children in household', 
-#        x = NULL,
-#        y = NULL) +
-#   theme(legend.position = 'bottom')
-```
-
-```{r fig.height=3, fig.width=7}
-# bar plot by marital status
-# marital_plot <- recoded_pop %>% 
-#   select(Married, cluster) %>%
-#   group_by(cluster, Married) %>% 
-#   summarize(Proportion = n()) %>% 
-#   group_by(cluster) %>% 
-#   mutate(Proportion = Proportion / sum(Proportion)) %>% 
-#   ungroup() %>% 
-#   ggplot(aes(x = cluster, y = Proportion, group = Married, fill = Married)) +
-#   geom_col(position = 'stack', color = 'white') +
-#   geom_hline(data = recoded_pop[, 'Married'] %>% count(Married) %>% mutate(Proportion = n / sum(n)) %>% filter(Married == 'Not married'),
-#              aes(yintercept = Proportion),
-#              color = 'grey50') +
-#   scale_fill_brewer(palette = 'Reds', name = NULL) +
-#   # annotate(geom = 'text', x = 5, y = 0.55, 
-#   #          label = 'Population mean', color = 'grey30', fontface = 'bold', size = 3) +
-#   scale_y_continuous(labels = NULL) +
-#   labs(title = '...by marital status', 
-#        x = NULL,
-#        y = '') +
-#   theme(legend.position = 'bottom')
-```
-
-```{r fig.height=3, fig.width=7}
-# bar plot by education status
-# edu_status <- recoded_pop %>% 
-#   na.omit() %>% 
-#   select(Education, cluster) %>%
-#   group_by(cluster, Education) %>% 
-#   summarize(Proportion = n()) %>% 
-#   group_by(cluster) %>% 
-#   mutate(Proportion = Proportion / sum(Proportion)) %>% 
-#   ungroup()
-# 
-# edu_plot <- recoded_pop %>% 
-#   na.omit() %>% 
-#   select(Education) %>%
-#   count(Education) %>% 
-#   mutate(Proportion = n / sum(n),
-#          cluster = 'Population') %>% 
-#   ungroup() %>% 
-#   bind_rows(edu_status) %>% 
-#   mutate(Education = factor(Education, levels = rev(c('Did not graduate from HS', 'HS', 'Some college', 'Bachelors', 'Masters', 'Doctoral'))),
-#          cluster = factor(cluster, levels = c("Cluster\n1", 2:6, 'Population'))) %>% 
-#   ggplot(aes(x = cluster, y = Proportion, group = Education, fill = Education)) +
-#   geom_col(position = 'stack', color = 'white') +
-#   scale_fill_brewer(palette = 'Blues', name = NULL) +
-#   scale_y_continuous(labels = NULL) +
-#   labs(title = '...by education', 
-#        x = NULL,
-#        y = NULL) +
-#   theme(legend.position = 'bottom',
-#         legend.text = element_text(size = 7),
-#         legend.key.size = unit(0.4, "cm")) +
-#   guides(fill = guide_legend(nrow = 2))
-```
-
-```{r fig.height=6, fig.width=7}
-# gridExtra::grid.arrange(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
 ```
 
 ```{r}
@@ -623,7 +461,7 @@ names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
                                rep(c('Male', 'Female'), hcl_k))
 
 
-sex_plot_2 <- recoded_pop %>% 
+sex_plot <- recoded_pop %>% 
   select(Sex, cluster) %>%
   group_by(cluster, Sex) %>% 
   summarize(Proportion = n()) %>% 
@@ -658,7 +496,7 @@ names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
                                rep(c('No children', 'Children in household'), hcl_k))
 
 # bar plot by child status
-child_plot_2 <- recoded_pop %>% 
+child_plot <- recoded_pop %>% 
   select(Child, cluster) %>%
   group_by(cluster, Child) %>% 
   summarize(Proportion = n()) %>% 
@@ -691,7 +529,7 @@ names(custom_colors) <- paste0(rep(sort(unique(recoded_pop$cluster)), each = 2),
                                rep(c('Not married', 'Married'), hcl_k))
 
 # bar plot by marital status
-marital_plot_2 <- recoded_pop %>% 
+marital_plot <- recoded_pop %>% 
   select(Married, cluster) %>%
   group_by(cluster, Married) %>% 
   summarize(Proportion = n()) %>% 
@@ -716,7 +554,6 @@ marital_plot_2 <- recoded_pop %>%
   theme(legend.position = 'none',
         panel.grid.major.y = element_blank())
 ```
-
 
 ```{r}
 # attempt to color them to match the cluster colors
@@ -766,7 +603,7 @@ edu_status <- recoded_pop %>%
   mutate(Proportion = Proportion / sum(Proportion)) %>% 
   ungroup()
 
-edu_plot_2 <- recoded_pop %>% 
+edu_plot <- recoded_pop %>% 
   na.omit() %>% 
   select(Education) %>%
   count(Education) %>% 
@@ -790,11 +627,30 @@ edu_plot_2 <- recoded_pop %>%
         panel.grid.major.y = element_blank())
 ```
 
-
-```{r fig.height=6, fig.width=7}
-gridExtra::grid.arrange(sex_plot_2, child_plot_2, marital_plot_2, edu_plot_2, ncol = 2)
+```{r fig.height=5, fig.width=7}
+gridExtra::grid.arrange(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
 ```
 
+Comparing cluster assignment against demographic variables allows up to characterize which Americans make up the majority of each cluster. A brief demographic description of each cluster is provided below: 
+
+### Cluster 1
+The first cluster 
+Young/kids majority sub 25 working on the weekend like usual. Even income and gender. 
+
+### Cluster 2
+Older people lower income spend time socializing, relaxing and leisure
+
+### Cluster 3
+Slightly older group but less male than cluster 2, less children, more educated and spend time socializing and on leisure. 
+
+### Cluster 4
+Stay at home moms, middle age, spend a lot of time on housework and are married and do not have kids in the household. Educated empty nesters
+
+### Cluster 5
+Stay at home moms 20-40 and spend a lot of time taking care of others. Highly educated and married. 
+
+### Cluster 6
+Everyone else 
 
 
 # Conclusion
