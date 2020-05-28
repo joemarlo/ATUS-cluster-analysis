@@ -1,5 +1,6 @@
 ---
-title: "How does your weekend match up?"
+title: "How does your weekend stack up?"
+subtitle: "A cluster analysis of how Americans' spend their weekends"
 date:  "`r format(Sys.time(), '%B %d %Y')`"
 output: pdf_document
 toc: true
@@ -83,9 +84,9 @@ density_plot_data %>%
   ggplot(aes(x = value, group = label, fill = label)) +
   geom_density(color = 'grey50', alpha = 0.4, adjust = 2) +
   scale_fill_discrete(name = 'Mean minutes: Activity') +
-  scale_x_log10() +
+  scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
   scale_y_continuous(labels = NULL) +
-  labs(title = 'Weekend Time use activities',
+  labs(title = 'Weekend time use activities',
        subtitle = 'Non-zero values only',
        x = 'Minutes per day',
        y = NULL) +
@@ -320,7 +321,6 @@ atus_resampled %>%
   ggplot(aes(x = value, group = name, fill = name)) +
   geom_density(alpha = 0.4, color = 'grey50', size = 0.5) +
   scale_fill_discrete(name = NULL) +
-  # viridis::scale_fill_viridis(discrete = TRUE, name = NULL) +
   scale_x_log10(limits = c(10, 1200)) +
   scale_y_continuous(labels = NULL) +
   facet_grid(group~., switch = 'y') +
@@ -330,7 +330,7 @@ atus_resampled %>%
 ```
 
 
-## Zoom on on specific activities
+## Zoom in on specific activities
 
 Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
@@ -357,7 +357,7 @@ atus_resampled %>%
   scale_y_continuous(labels = NULL) +
   scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
   facet_wrap(~name, nrow = 5, scales = 'free_y') +
-  labs(title = 'Least similar activities after cut by cluster', 
+  labs(title = 'Most distinct activities after accounting for cluster membership', 
        x = 'Minutes per day',
        y = NULL)
 ```
@@ -417,8 +417,8 @@ Age_plot <- population %>%
   # scale_fill_brewer(palette = 'Spectral', name = NULL) +
   # scale_x_log10(labels = function(x) scales::comma(x, accuracy = 1)) +
   scale_y_continuous(labels = NULL) +
-  facet_grid(cluster~name, scales = 'free',  switch = 'y') +
-  labs(title = 'Age',
+  facet_grid(cluster~name, scales = 'fixed',  switch = 'y') +
+  labs(title = 'Clusters by distribution of age',
        subtitle = 'Grey distributions represent the population',
        x = 'Age',
        y = NULL) +
@@ -455,8 +455,8 @@ income_plot <- population %>%
   geom_errorbar(data = hline_data, aes(ymin = proportion , ymax = proportion), color = 'grey50') +
   scale_fill_brewer(palette = 'Spectral', name = NULL) +
   scale_y_continuous(labels = NULL) +
-  facet_grid(cluster~., scales = 'free') +
-  labs(title = 'Household income',
+  facet_grid(cluster~., scales = 'fixed') +
+  labs(title = '...by household income',
        subtitle = 'Horizontal lines represent the population',
        x = 'Household income',
        y = NULL) +
@@ -635,7 +635,7 @@ sex_plot_2 <- recoded_pop %>%
   geom_col(position = 'stack', color = 'white') +
   geom_hline(data = recoded_pop[, 'Sex'] %>% count(Sex) %>% mutate(Proportion = n / sum(n)) %>% filter(Sex == 'Male'),
              aes(yintercept = Proportion),
-             color = 'grey40') +
+             color = 'grey40', size = 0.8) +
   scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
   annotate(geom = 'text', x = 1, y = 0.3, angle = 90,
            label = 'Male', color = 'white', fontface = 'bold', size = 3) +
@@ -670,7 +670,7 @@ child_plot_2 <- recoded_pop %>%
   geom_col(position = 'stack', color = 'white') +
   geom_hline(data = recoded_pop[, 'Child'] %>% count(Child) %>% mutate(Proportion = n / sum(n)) %>% filter(Child == 'No children'),
              aes(yintercept = Proportion),
-             color = 'grey40') +
+             color = 'grey40', size = 0.8) +
   scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
   annotate(geom = 'text', x = 1, y = 0.3, angle = 90,
            label = 'No children', color = 'white', fontface = 'bold', size = 3) +
@@ -703,7 +703,7 @@ marital_plot_2 <- recoded_pop %>%
   geom_col(position = 'stack', color = 'white') +
   geom_hline(data = recoded_pop[, 'Married'] %>% count(Married) %>% mutate(Proportion = n / sum(n)) %>% filter(Married == 'Not married'),
              aes(yintercept = Proportion),
-             color = 'grey40') +
+             color = 'grey40', size = 0.8) +
   scale_fill_manual(values = custom_colors, name = NULL, guide = FALSE) +
   annotate(geom = 'text', x = 1, y = 0.27, angle = 90,
            label = 'Not married', color = 'white', fontface = 'bold', size = 3) +

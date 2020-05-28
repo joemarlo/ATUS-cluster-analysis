@@ -9,4 +9,6 @@
 - [x] Create master analysis
   - [x] clean up Marlo analysis
 - [x] Develop method to show relative change in demographics
-- [ ] Analysis difference in clusters: by activity and by demographics
+- [x] Analyse difference in clusters: by activity and by demographics
+- [x] Fixed label switching problem
+- [x] Clean up plots and match cluster colors across plots
