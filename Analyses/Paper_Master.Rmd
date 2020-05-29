@@ -1,6 +1,6 @@
 ---
 title: "How does your weekend stack up?"
-subtitle: "A cluster analysis of how Americans' spend their weekends"
+subtitle: "A cluster analysis of how Americans spend their weekends"
 date:  "`r format(Sys.time(), '%B %d %Y')`"
 output:
   pdf_document:
@@ -23,7 +23,7 @@ knitr::opts_knit$set(root.dir = normalizePath(".."))
 
 What are your plans for the weekend? While it is easy to imagine that Americans spend their weekends differently, this is a challenging question to empirically validate. 
 
-Describing the average American’s weekend plans in an easy exercise in descriptive statistics. On average, the typical American sleeps 10 hours sleeping, six hours socializing and relaxing, two hours on household activities and one hour eating and drinking. This picture of how the average weekend is shown in the plot below. 
+Summarizing the average American’s weekend plans is an easy exercise in descriptive statistics. On average, the typical American spends 10 hours sleeping, six hours socializing and relaxing, two hours on household activities and one hour eating and drinking. This picture of the average weekend is shown in the plot below. 
 
 \  
 
@@ -42,14 +42,14 @@ Data on time use was obtained from the [American Time Use Survey](https://www.bl
 
 The final cluster solution was able to identify six unique clusters, five of which were characterized by uniquely different activity patterns compared to the general population. The sixth cluster appeared to characterize the “average” American weekend. 
 
-Broadly speaking, considerable differences in time spent working, on social and leisure activity, on household activities (i.e. home maintenance) and on taking care of other members of the household were uncovered. For example, one cluster spent 6.6x time working compared to the population average and another spent 7.7x time caring for other household members. These results suggests that there are distinct differences in weekend activities and that these differences can be empirically identified. 
+Broadly speaking, considerable differences in time spent on work, on social and leisure activity, on household activities (i.e. home maintenance) and on taking care of other members of the household were uncovered. For example, one cluster spent 6.6x time working compared to the population average and another spent 7.7x time caring for other household members. These results suggest that there are distinct groupings of weekend activities and that these groupings can be empirically identified. 
 
 
 # Analysis
 
 ## Distance metric
 
-Clustering algorithms rely on calculating measures of distance between data points and variables. There are several established metrics such as the [Euclidean](https://hlab.stanford.edu/brian/euclidean_distance_in.html), [Manhattan](https://www.cs.cornell.edu/courses/JavaAndDS/files/manhattanDistance.pdf), [Mahalanobis](http://cis.csuohio.edu/~sschung/CIS660/MahalanobisDistance.pdf) and many others. As a starting point, it is useful to examine the distances between variables to understand if an underlying relationship exists. 
+Clustering algorithms rely on calculating distance between data points and variables. There are several established distance metrics such as the [Euclidean](https://hlab.stanford.edu/brian/euclidean_distance_in.html), [Manhattan](https://www.cs.cornell.edu/courses/JavaAndDS/files/manhattanDistance.pdf), [Mahalanobis](http://cis.csuohio.edu/~sschung/CIS660/MahalanobisDistance.pdf) and many others. As a starting point, it is useful to examine the distances between variables to understand if an underlying relationship exists. 
 
 The distance matrix confirms some simple assumptions. For example, those who work more on the weekend spend less time sleeping. Similarly, those who work more on weekends have less social and leisure time. While these simple comparisons confirm the assumption that patterns exist they do not reveal any underlying complex structure. 
 
@@ -59,17 +59,19 @@ The distance matrix confirms some simple assumptions. For example, those who wor
 
 ## Hierarchical clustering and visualizing the relationships 
 
-Hierarchical clustering extends the use of distance metrics to understand the similarities and differences between data points (i.e. the people), rather than the distance between variables. A powerful way to visualize this distance is by plotting a dendrogram of the clusters. Hierarchical clustering groups observations by iteratively reducing the number of clusters by combining data points. Dendrograms are a way of visualizing these relationships and identifying existing groupings. In this context, branches that are closer to one another represent people with more similar weekends.
+Hierarchical clustering extends the use of distance metrics to understand the similarities and differences between data points (i.e. the people), rather than the distance between variables. A powerful way to visualize this distance is by plotting a dendrogram of the clusters. Hierarchical clustering groups observations by iteratively reducing the number of clusters — combining nearby data points with each iteration. Dendrograms are a way of visualizing these relationships and identifying existing groupings. In this context, branches that are closer to one another represent people with more similar weekends.
 
 ![](Plots/Hierarchical_cluster_bw.png)
 
 ## Choosing the right number of clusters
 
-Identifying the final number of clusters is a nuanced and subjective exercise. That being said, mathematical and quantitative guidelines exist to aid this decision. To determine the number of groups the Calinski-Harabasz index, Silhouette width and Gap-statistic were consulted. 
+Identifying the final number of clusters is a nuanced and subjective exercise. That being said, mathematical and quantitative guidelines exist to aid this decision. To determine the number of groups, the Calinski-Harabasz index, Silhouette width and Gap-statistic were consulted. 
 
-These metrics, combined with the visualization provided by the dendrogram suggest that American’s weekend activities can be divided into six distinct clusters. Of the six final clusters, five represent distinct groupings while the sixth appears to be more general. 
+These metrics, combined with the visualization provided by the dendrogram suggest that Americans’ weekend activities can be divided into six distinct clusters. Of the six final clusters, five represent distinct groupings while the sixth appears to be more general. 
 
 ![](Plots/Hierarchical_cluster_col.png)
+
+## Other methods
 
 Hierarchical clustering is only one of many clustering methods. We considered the popular K-means algorithm as well as model-based clustering. A hierarchical approach offered the best fit to this particular data set. Within the Time Use Survey, many respondents indicate zero minutes spent on several activities. The K-means algorithm assumes all variables have an equal variance and does not handle zero-inflated variables well. These assumptions do not fit the specifics of time use. Similarly, model based clustering has more rigid assumptions that variables come from a multivariate normal data generating process. Hierarchical clustering avoids these assumptions and is a good fit for this particular clustering problem. 
 
@@ -79,13 +81,13 @@ Frequently, variables are scaled prior to cluster analysis. In this particular c
 
 ## What activities define each cluster?
 
-After assigning each person to a cluster, different groupings of weekend activities begin to emerge. Shown below, while all six clusters spent approximately equal time sleeping, there are distinct differences in the amount of time spent working, time spent on household activities, differences in socialization and differing amounts of time spent caring for other members of ones’ household. In the plot, each row represents a distinct cluster and colors denote different activities. 
+After assigning each person to a cluster, different groupings of weekend activities begin to emerge. Shown below, while all six clusters spent approximately equal time sleeping, there are distinct differences in the amount of time spent on work, on household activities, on socialization, and on caring for other members of ones’ household. In the plot, each row represents a distinct cluster and colors denote different activities. 
 
 \  
 
 ![](Plots/Weekend_activities_split_by_cluster.png)
 
-To get a better understanding of each cluster, the plot below focuses on the most distinct differences in time spent between each cluster. Differences in these four primary activities account for the majority  of differences in how American’s spend their weekends. These results show that the algorithm is able to identity those who spend their weekends predominantly working (Cluster 1), socializing (Clusters 2 & 3), on household activities (Cluster 4) and on caring for other members in the household (Cluster 5).
+To get a better understanding of each cluster, the plot below focuses on the most distinct differences in time spent between each cluster. Differences in these four primary activities account for the majority of differences in how Americans spend their weekends. These results show that the algorithm is able to identify those who spend their weekends predominantly working (Cluster 1), socializing (Clusters 2 & 3), performing household activities (Cluster 4) and caring for other members in the household (Cluster 5).
 
 \  
 
@@ -109,13 +111,13 @@ Comparing age, income, sex, children, marital status, and educational attainment
 ![](Plots/By_age_by_income.png)
 
 
-Similarly, we see uneven dispersion in sex, marital status, children, and education levels. Some clusters skew towards female, others contain more married individuals, and others more education. Notably, Cluster 5 contains almost exclusively individuals that have children in the household.
+Similarly, we see uneven dispersion in sex, marital status, children, and education levels. Some clusters skew towards female, others contain more married individuals, and others with more education. Notably, Cluster 5 contains almost exclusively individuals that have children in the household.
 
 ![](Plots/By_sex_child_marital_education.png)
 
 ## Cluster summaries
 
-Comparing cluster assignment against demographic variables allows up to characterize which Americans make up the majority of each cluster. A brief demographic description of each cluster is provided below: 
+Comparing cluster assignment against demographic variables allows us to characterize which Americans make up the majority of each cluster. A brief demographic description of each cluster is provided below: 
 
 ### Cluster 1
 - Those in Cluster 1 spent the most time working. With an average of 8 hours and 20 minutes spent working each weekend, this is 6.6x the population average of 1 hour and 16 minutes.  
@@ -123,7 +125,7 @@ Comparing cluster assignment against demographic variables allows up to characte
 
 ### Cluster 2
 - Those in Cluster 2 spent the most time on social and leisure activities. With an average of 13 hours spent on social and leisure activities, this is 2.2x the population average of 5 hour and 51 minutes.   
-- Compared to population averages, Americans within this cluster tend to be older, have lower incomes, have less children in the household and are less educated. 
+- Compared to population averages, Americans within this cluster tend to be older, have lower incomes, have fewer children in the household and are less educated. 
 
 ### Cluster 3
 - Those in Cluster 3 spent above average amounts of time on social and leisure activities, but less time than cluster 2. With an average of 8 hours spent on social and leisure activities, this is 1.5x the population average of 5 hour and 51 minutes.   
@@ -147,4 +149,4 @@ The cluster analysis showed that different Americans do in fact spend their week
 
 These findings could be applied in several ways. From a marketing perspective the ability to identity segments of the population may help improve targeted advertisements. From the perspective of a researcher, these findings align with prior work that shows gender differences in time allocated to unpaid work. This is one example of how clustering may be applied to identify existing social inequities. 
 
-Describing weekend time use is a methodological challenge — because the goal of such an analysis is to describe the relationship of many variables, there is no single variable to “supervise” the analysis. This work showed how clustering, an “unsupervised” approach, can be used to empirically validate that there are distinct patterns in how Americans are spending their weekends. 
+Describing weekend time use is a methodological challenge — because the goal of such an analysis is to illustrate the relationship of many variables, there is no single variable to “supervise” the analysis. This work showed how clustering, an “unsupervised” approach, can be used to empirically validate that there are distinct patterns in how Americans are spending their weekends. 
