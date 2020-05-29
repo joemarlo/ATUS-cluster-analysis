@@ -627,7 +627,7 @@ edu_plot <- recoded_pop %>%
 
 ```{r fig.height=5, fig.width=7}
 plot <- gridExtra::arrangeGrob(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
-save_plot(name = 'By_sex_child_marital_education', plot = plot, height = 4.5)
+save_plot(name = 'By_sex_child_marital_education', plot = plot, height = 4.6)
 rm(plot)
 ```
 
