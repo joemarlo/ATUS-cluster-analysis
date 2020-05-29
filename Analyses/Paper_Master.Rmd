@@ -132,11 +132,11 @@ Comparing cluster assignment against demographic variables allows us to characte
 - Compared to population averages, Americans within this cluster tend to be slightly wealthier and slightly more female. 
 
 ### Cluster 4
-- Those in Cluster 4 spent the most time on household activities. With an average of 6 hours spent on social and leisure activities, this is 2.6x the population average of 2 hour and 17 minutes.   
+- Those in Cluster 4 spent the most time on household activities. With an average of 6 hours spent on household activities, this is 2.6x the population average of 2 hour and 17 minutes.   
 - Compared to population averages, Americans within this cluster tend to be middle aged, more likely to be married and more likely to be female. 
 
 ### Cluster 5
-- Those in Cluster 5 spent the most time caring for other members of the household. With an average of 4 hours and 22 minutes spent on social and leisure activities, this is 7.7x the population average of 34 minutes.   
+- Those in Cluster 5 spent the most time caring for other members of the household. With an average of 4 hours and 22 minutes spent on caring for other members of the household, this is 7.7x the population average of 34 minutes.   
 - Compared to population averages, Americans within this cluster tended to be heavily female, were more likely to be married, were more educated and were very likely to have children in the household. 
 
 ### Cluster 6
