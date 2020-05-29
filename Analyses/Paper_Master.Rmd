@@ -46,7 +46,7 @@ Broadly speaking, considerable differences in time spent working, on social and 
 
 ## Distance
 
-Clustering algorithms rely on calculating measures of distance between data points and variables. There are several established metrics such as the euclidean, manhattan, Jacquard and many others. As a starting point, it is useful to examine the distances between variables to understand if an underlying relationship exists. 
+Clustering algorithms rely on calculating measures of distance between data points and variables. There are several established metrics such as the [euclidean](https://hlab.stanford.edu/brian/euclidean_distance_in.html), [manhattan](https://www.cs.cornell.edu/courses/JavaAndDS/files/manhattanDistance.pdf), [mahalanobis](http://cis.csuohio.edu/~sschung/CIS660/MahalanobisDistance.pdf) and many others. As a starting point, it is useful to examine the distances between variables to understand if an underlying relationship exists. 
 
 The distance matrix confirms some simple assumptions. For example, those who work more on the weekend spend less time sleeping. Similarly, those who work more on weekends have less social and leisure time. While these simple comparisons confirm the assumption that patterns exist they do not reveal any underlying complex structure. 
 
