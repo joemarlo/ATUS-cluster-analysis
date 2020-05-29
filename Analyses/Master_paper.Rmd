@@ -35,11 +35,9 @@ Data on time use was obtained from the American Time Use Survey (ATUS), which me
 
 
 # Key findings
-Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+The final cluster solution was able to identify 6 unique clusters, 5 of which were characterized by uniquely different activity patterns compared to the general population. The 6th cluster appeared to characterize the “average” American weekend. 
 
-key points on data not yet mentioned
- - weekend only
- - going to examine a weighted samplen of 25k
+Broadly speaking, considerable differences in time spent working, on social and leisure activity,  on household activities (i.e. home maintenance) and on taking care of other members of the household were uncovered. For example, one cluster spent 6.6 times more time working compared to the population average and another spent 7.7 times more time caring for other household members. These results suggests that there are distinct differences in weekend activities and that these differences can be empirically identified. 
 
 
 # Analysis
@@ -114,28 +112,36 @@ Similarly, we see uneven dispersions in sex, marital status, children, and educa
 Comparing cluster assignment against demographic variables allows up to characterize which Americans make up the majority of each cluster. A brief demographic description of each cluster is provided below: 
 
 ### Cluster 1
-The first cluster 
-Young/kids majority sub 25 working on the weekend like usual. Even income and gender. 
+- Those in cluster 1 spent the most time working. With an average of 8 hours and 20 minutes spent working each weekend, this is 6.6 times greater than the population average of 1 hour and 16 minutes.  
+- Compared against population averages, this grouping tended to be younger and was slightly more male. 
 
 ### Cluster 2
-Older people lower income spend time socializing, relaxing and leisure
+- Those in cluster 2 spent the most time on social and leisure activities. With an average of 13 hours spent on social and leisure activities, this is 2.2 times greater than the population average of 5 hour and 51 minutes.   
+- Compared to population averages, Americans within this cluster tend to be older, have lower incomes, have less children in the household and are less educated. 
 
 ### Cluster 3
-Slightly older group but less male than cluster 2, less children, more educated and spend time socializing and on leisure. 
+- Those in cluster 3 spent above average amounts of time on social and leisure activities, but less time than cluster 2. With an average of 8 hours spent on social and leisure activities, this is 1.5 times greater than the population average of 5 hour and 51 minutes.   
+- Compared to population averages, Americans within this cluster tend to be slightly wealthier and slightly more female. 
 
 ### Cluster 4
-Stay at home moms, middle age, spend a lot of time on housework and are married and do not have kids in the household. Educated empty nesters
+- Those in cluster 4 spent the most time on household activities. With an average of 6 hours spent on social and leisure activities, this is 2.6 times greater than the population average of 2 hour and 17 minutes.   
+- Compared to population averages, Americans within this cluster tend to be middle aged, more likely to be married and more likely to be female. 
 
 ### Cluster 5
-Stay at home moms 20-40 and spend a lot of time taking care of others. Highly educated and married. 
+- Those in cluster 5 spent the most time caring for other members of the household. With an average of 4 hours and 22 minutes spent on social and leisure activities, this is 7.7 times greater than the population average 34 minutes.   
+- Compared to population averages, Americans within this cluster tended to be heavily female, were more likely to be married, were more educated and were very likely to have children in the household. 
 
 ### Cluster 6
-Everyone else 
+- Time use and demographic make up in cluster 6 mirrored population averages and suggests that this cluster characterizes the average weekend of the American population.
 
 
 # Conclusion
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
 
-Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+The cluster analysis showed that different Americans do in fact spend their weekends in different ways. The methodology was able to identify 6 unique clusters, 5 of which were characterized by uniquely different activity patterns compared to the general population. The 6th cluster appeared to characterize the “average” American weekend. 
+
+These findings could be applied in several ways. From a marketing perspective the ability to identity segments of the population may help improve targeted advertisements. From the perspective of a researcher, these findings align with prior work that shows gender differences in time allocated to unpaid work. This is one example of how clustering may be applied to identify existing social inequities. 
+
+Describing weekend time use is a methodological challenge, because the goal of such an analysis is to describe the relationship of many variables, there is no single variable to “supervise” the analysis. This work showed how clustering, an “unsupervised” approach, can be used to empirically validate that there are distinct patterns in how Americans are spending their weekends. 
+
 

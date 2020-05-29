@@ -188,10 +188,9 @@ ggplot(ggd1$segments) +
   theme(axis.ticks = element_blank(),
         panel.grid.major.x = element_blank(),
         panel.grid.minor.x = element_blank(),
-        legend.position = 'none',
-        plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
+        legend.position = 'none')
 
-save_plot(name = 'Hierarchical_cluster_bw')
+save_plot(name = 'Hierarchical_cluster_bw', height = 2.7)
 ```
 
 ## Choosing number of clusters
@@ -253,12 +252,12 @@ ggd1$segments$col[is.na(ggd1$segments$col)] <- 'grey50'
 # set labels for below the plot
 text_labels <- tribble(
   ~label, ~x, ~y,
-  'Cluster 1', 1800, -2000,
-  'Cluster 2', 4500, -2000,
-  'Cluster 3', 8500, -2000,
-  'Cluster 4', 13500, -2000,
-  'Cluster 5', 16500, -2000,
-  'Cluster 6', 21000, -2000
+  'Cluster 1', 1800, -2500,
+  'Cluster 2', 4500, -2500,
+  'Cluster 3', 8500, -2500,
+  'Cluster 4', 13500, -2500,
+  'Cluster 5', 16500, -2500,
+  'Cluster 6', 21000, -2500
 )
 
 # plot the dendrogram
@@ -279,7 +278,7 @@ ggplot(ggd1$segments) +
         legend.position = 'none',
         plot.margin = margin(t = 10, r = 10, b = 30, l = 10, unit = "pt"))
 
-save_plot(name = 'Hierarchical_cluster_col')
+save_plot(name = 'Hierarchical_cluster_col', height = 3)
 ```
 
 
@@ -309,6 +308,27 @@ atus_resampled %>%
 save_plot(name = 'Weekend_activities_split_by_cluster')
 ```
 
+
+```{r}
+# average minutes per cluster per activity
+pop_avgs <- label_order %>% select(name = description, Mean_pop = Mean)
+atus_resampled %>% 
+  as_tibble() %>% 
+  bind_cols(group = as.character(correct_clusters)) %>%
+  mutate(group = if_else(group == '1', 'Cluster 1', group),
+         group = factor(group, levels = c("Cluster 1", 2:6))) %>% 
+  pivot_longer(cols = -group) %>% 
+  mutate(name = factor(name, levels = label_order$description)) %>% 
+  group_by(group, name) %>% 
+  summarize(Mean_clus = mean(value)) %>% 
+  left_join(pop_avgs) %>% 
+  mutate(per_diff = Mean_clus / Mean_pop) %>% 
+  arrange(group, desc(per_diff)) %>% 
+  mutate(Mean_clus = round(Mean_clus, 2),
+         per_diff = round(per_diff, 2)) %>% 
+  View
+rm(pop_avgs)
+```
 
 ```{r}
 # activites to show
@@ -411,7 +431,7 @@ income_plot <- population %>%
 
 ```{r fig.height=5, fig.width=7}
 plot <- gridExtra::arrangeGrob(Age_plot, income_plot, ncol = 2)
-save_plot(name = 'By_age_by_income', plot = plot)
+save_plot(name = 'By_age_by_income', plot = plot, height = 3.6)
 rm(plot)
 ```
 
@@ -607,7 +627,7 @@ edu_plot <- recoded_pop %>%
 
 ```{r fig.height=5, fig.width=7}
 plot <- gridExtra::arrangeGrob(sex_plot, child_plot, marital_plot, edu_plot, ncol = 2)
-save_plot(name = 'By_sex_child_marital_education', plot = plot)
+save_plot(name = 'By_sex_child_marital_education', plot = plot, height = 4.5)
 rm(plot)
 ```
 
