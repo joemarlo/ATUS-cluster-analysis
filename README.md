@@ -16,3 +16,14 @@ See also: [ATUS repo](https://github.com/joemarlo/ATUS)
 - [x] Analyse difference in clusters: by activity and by demographics
 - [x] Fixed label switching problem
 - [x] Clean up plots and match cluster colors across plots
+
+
+## Plots
+
+<p align="center">
+<img src="Analyses/Plots/Hierarchical_cluster_col.svg" width=79%>
+</p>
+
+<p align="center">
+<img src="Analyses/Plots/Most_distinct_activities.svg" width=79%>
+</p>
