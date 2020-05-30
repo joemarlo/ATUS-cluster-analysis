@@ -77,7 +77,7 @@ theme_web <- theme(
                                  color = "gray95",
                                  size = 10),
   plot.margin = unit(c(1, 1, 1, 1), "cm"),
-) + light_web
+) + theme_web_light
 ```
 
 
@@ -157,7 +157,7 @@ atus_long %>%
 
 save_plot(name = 'Euclidean_distance_between_activities')
 save_plot(name = 'Euclidean_distance_between_activities', 
-          plot = ggplot2::last_plot() + theme_web + theme(axis.text.x = element_text(size = 7)),
+          plot = ggplot2::last_plot() + theme_web + theme(axis.text = element_text(size = 7)),
           type = 'svg')
 ```
 

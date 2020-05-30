@@ -1,6 +1,6 @@
 # ATUS-cluster-analysis
 
-[Blog post](https://www.marlo.works/posts/atus-clustering/) ilustrating a cluster analysis of how Americans spend their weekends.
+[Blog post](https://www.marlo.works/posts/atus-clustering/) examining how Americans spend their weekends via cluster analysis
 
 See also: [ATUS repo](https://github.com/joemarlo/ATUS)
 
